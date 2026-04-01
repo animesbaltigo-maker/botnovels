@@ -1,0 +1,11 @@
+.env
+__pycache__/
+*.pyc
+*.pyo
+*.sqlite
+*.sqlite3
+*.db
+data/*.json
+data/*.sqlite
+data/*.sqlite3
+data/pdf_cache/
