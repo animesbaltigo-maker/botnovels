@@ -82,6 +82,11 @@ CANAL_POSTAGEM_NOVEL_CAPITULOS = (
     or os.getenv("CANAL_POSTAGEM_CAPITULOS", "@AtualizacoesOn").strip()
 )
 
+STICKER_DIVISOR = os.getenv(
+    "STICKER_DIVISOR",
+    "CAACAgQAAx0CbKkU-AACFJtps_kRLpeUt2Gvd7mT4d0gS1vyCgACOhUAAqDAiFJSU5pkUMltvzoE",
+).strip()
+
 ADMIN_IDS = [
     int(value.strip())
     for value in os.getenv("ADMIN_IDS", "1852596083").split(",")
