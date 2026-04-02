@@ -1,13 +1,25 @@
 import asyncio
 import html
+import json
 import unicodedata
+from pathlib import Path
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
-from config import ADMIN_IDS, BOT_USERNAME, CANAL_POSTAGEM_NOVELS, STICKER_DIVISOR
+from config import ADMIN_IDS, BOT_USERNAME, CANAL_POSTAGEM_NOVELS, DATA_DIR, STICKER_DIVISOR
 from core.channel_target import ensure_channel_target
-from services.centralnovel_client import get_cached_novel_bundle, get_novel_bundle, search_novels
+from services.centralnovel_client import (
+    get_cached_novel_bundle,
+    get_novel_bundle,
+    get_series_catalog,
+    search_novels,
+)
+
+POSTED_JSON_PATH = Path(DATA_DIR) / "novels_postadas.json"
+BULK_POST_DELAY_SECONDS = 30.0
+GLOBAL_BULK_RUNNING_KEY = "novel_bulk_post_running"
+GLOBAL_BULK_TASK_KEY = "novel_bulk_post_task"
 
 
 def _truncate_text(text: str, limit: int = 320) -> str:
@@ -74,6 +86,86 @@ def _build_keyboard(novel: dict) -> InlineKeyboardMarkup:
     )
 
 
+def _load_posted() -> list[str]:
+    if not POSTED_JSON_PATH.exists():
+        return []
+    try:
+        return json.loads(POSTED_JSON_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return []
+
+
+def _save_posted(items: list[str]) -> None:
+    POSTED_JSON_PATH.parent.mkdir(parents=True, exist_ok=True)
+    POSTED_JSON_PATH.write_text(json.dumps(items, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def _bulk_running(context: ContextTypes.DEFAULT_TYPE) -> bool:
+    return bool(context.application.bot_data.get(GLOBAL_BULK_RUNNING_KEY, False))
+
+
+def _set_bulk_running(context: ContextTypes.DEFAULT_TYPE, value: bool) -> None:
+    context.application.bot_data[GLOBAL_BULK_RUNNING_KEY] = value
+
+
+def _set_bulk_task(context: ContextTypes.DEFAULT_TYPE, task) -> None:
+    context.application.bot_data[GLOBAL_BULK_TASK_KEY] = task
+
+
+async def _safe_edit(message, text: str) -> None:
+    try:
+        await message.edit_text(text, parse_mode="HTML")
+    except Exception:
+        pass
+
+
+async def _resolve_novel_payload(novel_ref: dict) -> dict | None:
+    title_id = str(novel_ref.get("title_id") or "").strip()
+    if not title_id:
+        return None
+
+    bundle = get_cached_novel_bundle(title_id)
+    if bundle is None:
+        bundle = await asyncio.wait_for(get_novel_bundle(title_id), timeout=18.0)
+    return dict(bundle)
+
+
+async def _send_novel_post(bot, destination, novel: dict) -> None:
+    photo = novel.get("banner_url") or novel.get("cover_url") or None
+    caption = _build_caption(novel)
+    keyboard = _build_keyboard(novel)
+
+    if photo:
+        try:
+            await bot.send_photo(
+                chat_id=destination,
+                photo=photo,
+                caption=caption,
+                parse_mode="HTML",
+                reply_markup=keyboard,
+            )
+        except Exception as photo_error:
+            print("ERRO POSTNOVEL FOTO:", repr(photo_error))
+            await bot.send_message(
+                chat_id=destination,
+                text=caption,
+                parse_mode="HTML",
+                reply_markup=keyboard,
+                disable_web_page_preview=True,
+            )
+    else:
+        await bot.send_message(
+            chat_id=destination,
+            text=caption,
+            parse_mode="HTML",
+            reply_markup=keyboard,
+            disable_web_page_preview=True,
+        )
+
+    if STICKER_DIVISOR:
+        await bot.send_sticker(chat_id=destination, sticker=STICKER_DIVISOR)
+
+
 async def postnovel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id if update.effective_user else None
     message = update.effective_message
@@ -116,46 +208,13 @@ async def postnovel(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await status_message.edit_text("❌ <b>Nao consegui identificar a obra certa.</b>", parse_mode="HTML")
             return
 
-        title_id = search_item["title_id"]
-        bundle = get_cached_novel_bundle(title_id)
-        if bundle is None:
-            bundle = await asyncio.wait_for(get_novel_bundle(title_id), timeout=15.0)
+        novel = await _resolve_novel_payload(search_item)
+        if not novel:
+            await status_message.edit_text("❌ <b>Nao consegui montar os dados dessa novel.</b>", parse_mode="HTML")
+            return
 
-        novel = dict(bundle)
-        photo = novel.get("banner_url") or novel.get("cover_url") or None
-        caption = _build_caption(novel)
-        keyboard = _build_keyboard(novel)
         destination = await ensure_channel_target(context.bot, CANAL_POSTAGEM_NOVELS or message.chat_id)
-
-        if photo:
-            try:
-                await context.bot.send_photo(
-                    chat_id=destination,
-                    photo=photo,
-                    caption=caption,
-                    parse_mode="HTML",
-                    reply_markup=keyboard,
-                )
-            except Exception as photo_error:
-                print("ERRO POSTNOVEL FOTO:", repr(photo_error))
-                await context.bot.send_message(
-                    chat_id=destination,
-                    text=caption,
-                    parse_mode="HTML",
-                    reply_markup=keyboard,
-                    disable_web_page_preview=True,
-                )
-        else:
-            await context.bot.send_message(
-                chat_id=destination,
-                text=caption,
-                parse_mode="HTML",
-                reply_markup=keyboard,
-                disable_web_page_preview=True,
-            )
-
-        if STICKER_DIVISOR:
-            await context.bot.send_sticker(chat_id=destination, sticker=STICKER_DIVISOR)
+        await _send_novel_post(context.bot, destination, novel)
 
         await status_message.edit_text(
             f"✅ <b>Postagem enviada com sucesso.</b>\n\n<code>{html.escape(novel.get('title') or query)}</code>",
@@ -167,3 +226,121 @@ async def postnovel(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"❌ <b>Nao consegui postar essa novel.</b>\n\n{html.escape(str(error) or 'Tente novamente em instantes.')}",
             parse_mode="HTML",
         )
+
+
+async def _run_bulk_post_novels(
+    context: ContextTypes.DEFAULT_TYPE,
+    admin_chat_id: int,
+    reply_to_message_id: int | None,
+):
+    _set_bulk_running(context, True)
+    try:
+        destination = await ensure_channel_target(context.bot, CANAL_POSTAGEM_NOVELS or admin_chat_id)
+        catalog = await get_series_catalog()
+        posted = _load_posted()
+        posted_set = set(posted)
+        pending = [item for item in catalog if str(item.get("title_id") or "").strip() and str(item.get("title_id")) not in posted_set]
+
+        if not pending:
+            await context.bot.send_message(
+                chat_id=admin_chat_id,
+                text="✅ Nenhuma novel pendente para postar agora.",
+                reply_to_message_id=reply_to_message_id,
+            )
+            return
+
+        status_message = await context.bot.send_message(
+            chat_id=admin_chat_id,
+            text=(
+                "🚀 <b>Postagem em lote iniciada.</b>\n\n"
+                f"<b>Total pendente:</b> <code>{len(pending)}</code>\n"
+                f"<b>Intervalo:</b> <code>{int(BULK_POST_DELAY_SECONDS)}s</code>"
+            ),
+            parse_mode="HTML",
+            reply_to_message_id=reply_to_message_id,
+        )
+
+        sent = 0
+        failed = 0
+        total = len(pending)
+
+        for index, item in enumerate(pending, start=1):
+            title_id = str(item.get("title_id") or "").strip()
+            title = str(item.get("title") or "Novel").strip()
+
+            try:
+                novel = await _resolve_novel_payload(item)
+                if not novel:
+                    raise RuntimeError("Nao consegui montar a obra.")
+                await _send_novel_post(context.bot, destination, novel)
+                posted.append(title_id)
+                posted_set.add(title_id)
+                _save_posted(posted[-5000:])
+                sent += 1
+            except Exception as error:
+                failed += 1
+                print("ERRO POSTNOVEL BULK:", repr(error), title_id, title)
+
+            await _safe_edit(
+                status_message,
+                (
+                    "🚀 <b>Postagem em lote em andamento.</b>\n\n"
+                    f"<b>Enviadas:</b> <code>{sent}</code>\n"
+                    f"<b>Falhas:</b> <code>{failed}</code>\n"
+                    f"<b>Processadas:</b> <code>{index}/{total}</code>\n"
+                    f"<b>Atual:</b> <code>{html.escape(title)}</code>"
+                ),
+            )
+
+            if index < total:
+                await asyncio.sleep(BULK_POST_DELAY_SECONDS)
+
+        await _safe_edit(
+            status_message,
+            (
+                "✅ <b>Postagem em lote finalizada.</b>\n\n"
+                f"<b>Enviadas:</b> <code>{sent}</code>\n"
+                f"<b>Falhas:</b> <code>{failed}</code>\n"
+                f"<b>Total analisado:</b> <code>{total}</code>"
+            ),
+        )
+    finally:
+        _set_bulk_running(context, False)
+        context.application.bot_data.pop(GLOBAL_BULK_TASK_KEY, None)
+
+
+async def posttodasnovels(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id if update.effective_user else None
+    message = update.effective_message
+
+    if not message:
+        return
+
+    if not _is_admin(user_id):
+        await message.reply_text(
+            "❌ <b>Voce nao tem permissao para usar este comando.</b>",
+            parse_mode="HTML",
+        )
+        return
+
+    if _bulk_running(context):
+        await message.reply_text(
+            "⏳ <b>Ja existe uma postagem em lote rodando.</b>",
+            parse_mode="HTML",
+        )
+        return
+
+    task = context.application.create_task(
+        _run_bulk_post_novels(
+            context=context,
+            admin_chat_id=message.chat_id,
+            reply_to_message_id=message.message_id,
+        )
+    )
+    _set_bulk_task(context, task)
+
+    await message.reply_text(
+        "🚀 <b>Fila de postagem em lote iniciada.</b>\n\n"
+        "Vou enviar uma novel, depois um sticker divisor, e seguir nesse ritmo com 30 segundos entre uma postagem e outra.",
+        parse_mode="HTML",
+    )
