@@ -23,7 +23,7 @@ from handlers.metricas import metricas, metricas_limpar
 from handlers.novel import novel_command
 from handlers.novel_callbacks import callbacks
 from handlers.novel_updates import auto_post_new_novel_caps_job, postnovelcaps
-from handlers.postnovel import postnovel
+from handlers.postnovel import postnovel, posttodasnovels
 from handlers.referral import indicacoes, referral_button
 from handlers.start import start
 from services.centralnovel_client import warm_catalog_cache
@@ -115,6 +115,8 @@ def main() -> None:
     app.add_handler(CommandHandler("buscar", novel_command))
     app.add_handler(CommandHandler("ajuda", ajuda))
     app.add_handler(CommandHandler("postnovel", postnovel))
+    app.add_handler(CommandHandler("posttodasnovels", posttodasnovels))
+    app.add_handler(CommandHandler("postallnovels", posttodasnovels))
     app.add_handler(CommandHandler("postnovelcaps", postnovelcaps))
     app.add_handler(CommandHandler("postnovelscaps", postnovelcaps))
     app.add_handler(CommandHandler("postnovosepsnovel", postnovelcaps))
