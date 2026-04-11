@@ -73,12 +73,10 @@ def _caption(item: dict) -> str:
     brand = html.escape(BOT_BRAND)
 
     lines = [
-        "🆕 <b>Capitulo novo disponivel</b>",
+        "🆕 <b>{title}</b>",
         "",
-        f"📖 <b>{title}</b>",
         f"» <b>Capitulo:</b> <i>{chapter_number}</i>",
         f"» <b>Status:</b> <i>{status}</i>",
-        f"» <b>Total de capitulos:</b> <i>{total_chapters}</i>",
     ]
     if updated_at and updated_at != "agora ha pouco":
         lines.append(f"» <b>Atualizado:</b> <i>{updated_at}</i>")
