@@ -7,7 +7,7 @@ from pathlib import Path
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import ContextTypes
 
-from config import ADMIN_IDS, BOT_USERNAME, CANAL_POSTAGEM_NOVELS, DATA_DIR, STICKER_DIVISOR
+from config import ADMIN_IDS, BOT_USERNAME, CANAL_POSTAGEM_NOVELS, DATA_DIR
 from core.channel_target import ensure_channel_target
 from services.centralnovel_client import (
     get_cached_novel_bundle,
@@ -20,6 +20,9 @@ POSTED_JSON_PATH = Path(DATA_DIR) / "novels_postadas.json"
 BULK_POST_DELAY_SECONDS = 30.0
 GLOBAL_BULK_RUNNING_KEY = "novel_bulk_post_running"
 GLOBAL_BULK_TASK_KEY = "novel_bulk_post_task"
+
+NOVEL_STICKER_DIVISOR = "CAACAgQAAx0CbKkU-AACFJtps_kRLpeUt2Gvd7mT4d0gS1vyCgACOhUAAqDAiFJSU5pkUMltvzoE"
+DIVIDER_FALLBACK_TEXT = "━━━━━━━━━━━━━━"
 
 
 def _truncate_text(text: str, limit: int = 320) -> str:
