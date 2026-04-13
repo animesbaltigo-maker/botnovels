@@ -65,7 +65,7 @@ def _pick_best_candidate(query: str, results: list[dict]) -> dict | None:
 
 
 def _build_caption(novel: dict) -> str:
-    full_title = html.escape((novel.get("display_title") or novel.get("title") or "Sem titulo").upper())
+    full_title = html.escape((novel.get("display_title") or novel.get("title") or "Sem título").upper())
     genres = novel.get("genres") or []
     genres_text = ", ".join(f"#{genre}" for genre in genres[:4]) if genres else "N/A"
     genres_text = html.escape(genres_text)
@@ -75,10 +75,10 @@ def _build_caption(novel: dict) -> str:
 
     return (
         f"📚 <b>{full_title}</b>\n\n"
-        f"<b>Generos:</b> <i>{genres_text}</i>\n"
-        f"<b>Capitulos:</b> <i>{chapters}</i>\n"
+        f"<b>Gêneros:</b> <i>{genres_text}</i>\n"
+        f"<b>Capítulos:</b> <i>{chapters}</i>\n"
         f"<b>Status:</b> <i>{status}</i>\n\n"
-        f"💬 {description or 'Sem descricao disponivel.'}"
+        f"💬 {description or 'Sem descrição disponível.'}"
     )
 
 
@@ -93,14 +93,20 @@ def _load_posted() -> list[str]:
     if not POSTED_JSON_PATH.exists():
         return []
     try:
-        return json.loads(POSTED_JSON_PATH.read_text(encoding="utf-8"))
+        data = json.loads(POSTED_JSON_PATH.read_text(encoding="utf-8"))
+        if isinstance(data, list):
+            return [str(item).strip() for item in data if str(item).strip()]
     except Exception:
         return []
+    return []
 
 
 def _save_posted(items: list[str]) -> None:
     POSTED_JSON_PATH.parent.mkdir(parents=True, exist_ok=True)
-    POSTED_JSON_PATH.write_text(json.dumps(items, ensure_ascii=False, indent=2), encoding="utf-8")
+    POSTED_JSON_PATH.write_text(
+        json.dumps(items, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
 
 
 def _bulk_running(context: ContextTypes.DEFAULT_TYPE) -> bool:
@@ -130,7 +136,32 @@ async def _resolve_novel_payload(novel_ref: dict) -> dict | None:
     bundle = get_cached_novel_bundle(title_id)
     if bundle is None:
         bundle = await asyncio.wait_for(get_novel_bundle(title_id), timeout=18.0)
-    return dict(bundle)
+
+    return dict(bundle) if bundle else None
+
+
+async def _send_divider(bot, destination) -> None:
+    sticker = NOVEL_STICKER_DIVISOR.strip()
+    sticker_error = None
+
+    if sticker:
+        for _ in range(3):
+            try:
+                await bot.send_sticker(chat_id=destination, sticker=sticker)
+                return
+            except Exception as error:
+                sticker_error = error
+                await asyncio.sleep(0.8)
+
+        print("ERRO STICKER DIVISOR NOVEL:", repr(sticker_error), sticker)
+
+    try:
+        await bot.send_message(chat_id=destination, text=DIVIDER_FALLBACK_TEXT)
+    except Exception as fallback_error:
+        print("ERRO DIVISOR FALLBACK NOVEL:", repr(fallback_error))
+        if sticker_error:
+            raise sticker_error
+        raise
 
 
 async def _send_novel_post(bot, destination, novel: dict) -> None:
@@ -165,8 +196,7 @@ async def _send_novel_post(bot, destination, novel: dict) -> None:
             disable_web_page_preview=True,
         )
 
-    if STICKER_DIVISOR:
-        await bot.send_sticker(chat_id=destination, sticker=STICKER_DIVISOR)
+    await _send_divider(bot, destination)
 
 
 async def postnovel(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -178,7 +208,7 @@ async def postnovel(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not _is_admin(user_id):
         await message.reply_text(
-            "❌ <b>Voce nao tem permissao para usar este comando.</b>",
+            "❌ <b>Você não tem permissão para usar este comando.</b>",
             parse_mode="HTML",
         )
         return
@@ -203,17 +233,26 @@ async def postnovel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         results = await search_novels(query, limit=8)
         if not results:
-            await status_message.edit_text("❌ <b>Nao encontrei essa novel.</b>", parse_mode="HTML")
+            await status_message.edit_text(
+                "❌ <b>Não encontrei essa novel.</b>",
+                parse_mode="HTML",
+            )
             return
 
         search_item = _pick_best_candidate(query, results)
         if not search_item or not search_item.get("title_id"):
-            await status_message.edit_text("❌ <b>Nao consegui identificar a obra certa.</b>", parse_mode="HTML")
+            await status_message.edit_text(
+                "❌ <b>Não consegui identificar a obra certa.</b>",
+                parse_mode="HTML",
+            )
             return
 
         novel = await _resolve_novel_payload(search_item)
         if not novel:
-            await status_message.edit_text("❌ <b>Nao consegui montar os dados dessa novel.</b>", parse_mode="HTML")
+            await status_message.edit_text(
+                "❌ <b>Não consegui montar os dados dessa novel.</b>",
+                parse_mode="HTML",
+            )
             return
 
         destination = await ensure_channel_target(context.bot, CANAL_POSTAGEM_NOVELS or message.chat_id)
@@ -226,7 +265,7 @@ async def postnovel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as error:
         print("ERRO POSTNOVEL:", repr(error))
         await status_message.edit_text(
-            f"❌ <b>Nao consegui postar essa novel.</b>\n\n{html.escape(str(error) or 'Tente novamente em instantes.')}",
+            f"❌ <b>Não consegui postar essa novel.</b>\n\n{html.escape(str(error) or 'Tente novamente em instantes.')}",
             parse_mode="HTML",
         )
 
@@ -242,7 +281,13 @@ async def _run_bulk_post_novels(
         catalog = await get_series_catalog()
         posted = _load_posted()
         posted_set = set(posted)
-        pending = [item for item in catalog if str(item.get("title_id") or "").strip() and str(item.get("title_id")) not in posted_set]
+
+        pending = [
+            item
+            for item in catalog
+            if str(item.get("title_id") or "").strip()
+            and str(item.get("title_id")) not in posted_set
+        ]
 
         if not pending:
             await context.bot.send_message(
@@ -274,12 +319,15 @@ async def _run_bulk_post_novels(
             try:
                 novel = await _resolve_novel_payload(item)
                 if not novel:
-                    raise RuntimeError("Nao consegui montar a obra.")
+                    raise RuntimeError("Não consegui montar a obra.")
+
                 await _send_novel_post(context.bot, destination, novel)
+
                 posted.append(title_id)
                 posted_set.add(title_id)
                 _save_posted(posted[-5000:])
                 sent += 1
+
             except Exception as error:
                 failed += 1
                 print("ERRO POSTNOVEL BULK:", repr(error), title_id, title)
@@ -321,14 +369,14 @@ async def posttodasnovels(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not _is_admin(user_id):
         await message.reply_text(
-            "❌ <b>Voce nao tem permissao para usar este comando.</b>",
+            "❌ <b>Você não tem permissão para usar este comando.</b>",
             parse_mode="HTML",
         )
         return
 
     if _bulk_running(context):
         await message.reply_text(
-            "⏳ <b>Ja existe uma postagem em lote rodando.</b>",
+            "⏳ <b>Já existe uma postagem em lote rodando.</b>",
             parse_mode="HTML",
         )
         return
