@@ -1,480 +1,649 @@
-
 <!doctype html>
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Novels Baltigo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,700;1,9..40,300&display=swap" rel="stylesheet">
   <style>
     :root {
       color-scheme: dark;
-      --bg: #07080d;
-      --bg-2: #11141c;
-      --panel: rgba(19, 22, 31, .92);
-      --panel-2: rgba(27, 31, 43, .96);
-      --line: rgba(255, 255, 255, .11);
-      --line-2: rgba(255, 255, 255, .18);
-      --text: #f7f8ff;
-      --muted: #aeb5c7;
-      --soft: #dce1ee;
-      --red: #ff3048;
-      --red-2: #a51125;
-      --gold: #ffc857;
-      --blue: #45c7ff;
-      --green: #59d57c;
-      --radius: 18px;
-      --shadow: 0 24px 80px rgba(0, 0, 0, .42);
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --bg:         #06050e;
+      --bg2:        #0c0b18;
+      --bg3:        #111028;
+      --surface:    rgba(16, 14, 32, 0.92);
+      --surface2:   rgba(22, 20, 42, 0.96);
+      --border:     rgba(138, 110, 255, 0.14);
+      --border2:    rgba(138, 110, 255, 0.28);
+      --text:       #f0eeff;
+      --muted:      #8b85b0;
+      --soft:       #ccc8f0;
+      --ink:        #1a1830;
+      --purple:     #9b6dff;
+      --purple2:    #7c4de8;
+      --violet:     #bf8fff;
+      --gold:       #f0c060;
+      --gold2:      #c89030;
+      --teal:       #4de8c8;
+      --crimson:    #e84d6e;
+      --radius-sm:  10px;
+      --radius:     18px;
+      --radius-lg:  26px;
+      --shadow:     0 32px 80px rgba(0, 0, 0, 0.60);
+      --shadow-sm:  0 8px 32px rgba(0, 0, 0, 0.40);
+      --glow:       0 0 40px rgba(155, 109, 255, 0.25);
+      font-family: 'DM Sans', ui-sans-serif, system-ui, -apple-system, sans-serif;
     }
 
-    * { box-sizing: border-box; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
     html { scroll-behavior: smooth; }
 
     body {
-      margin: 0;
       min-height: 100vh;
       color: var(--text);
-      background:
-        radial-gradient(circle at 15% -10%, rgba(255, 48, 72, .34), transparent 32rem),
-        radial-gradient(circle at 92% 10%, rgba(69, 199, 255, .16), transparent 24rem),
-        linear-gradient(155deg, #090912 0%, #151821 48%, #08090f 100%);
-      letter-spacing: 0;
+      background: var(--bg);
       overflow-x: hidden;
+      position: relative;
     }
 
+    /* ─── Atmospheric Background ─── */
     body::before {
       content: "";
       position: fixed;
-      inset: -20%;
+      inset: 0;
       pointer-events: none;
       background:
-        linear-gradient(115deg, transparent 0 42%, rgba(255,255,255,.035) 45%, transparent 49%),
-        repeating-linear-gradient(90deg, rgba(255,255,255,.025) 0 1px, transparent 1px 88px);
-      opacity: .35;
-      animation: drift 18s linear infinite;
+        radial-gradient(ellipse 80% 60% at 10% -10%, rgba(120, 60, 220, 0.28) 0%, transparent 55%),
+        radial-gradient(ellipse 60% 50% at 95% 15%,  rgba(78, 40, 180, 0.18) 0%, transparent 50%),
+        radial-gradient(ellipse 70% 40% at 50% 100%, rgba(60, 30, 140, 0.22) 0%, transparent 60%),
+        linear-gradient(165deg, #06050e 0%, #0d0b1e 45%, #080614 100%);
+      z-index: 0;
     }
 
-    button, input { font: inherit; }
-
-    button {
-      border: 0;
-      color: inherit;
-      cursor: pointer;
-      -webkit-tap-highlight-color: transparent;
+    /* Particle/grain overlay */
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.04;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+      background-size: 200px 200px;
+      z-index: 0;
     }
-
-    button:disabled {
-      cursor: default;
-      opacity: .45;
-    }
-
-    img { max-width: 100%; }
 
     .app {
       position: relative;
-      width: min(100%, 980px);
+      z-index: 1;
+      width: min(100%, 1000px);
       margin: 0 auto;
-      padding: 18px 14px 104px;
+      padding: 0 12px 110px;
     }
 
+    button, input { font: inherit; border: 0; outline: none; }
+    button { cursor: pointer; -webkit-tap-highlight-color: transparent; color: inherit; }
+    button:disabled { cursor: default; opacity: 0.4; }
+    img { max-width: 100%; display: block; }
+
+    /* ─── TOPBAR ─── */
     .topbar {
       position: sticky;
       top: 0;
-      z-index: 30;
+      z-index: 50;
       display: grid;
-      grid-template-columns: 54px 1fr 54px;
-      gap: 12px;
+      grid-template-columns: 50px 1fr 50px;
       align-items: center;
-      padding: 12px 0 14px;
-      background: linear-gradient(180deg, rgba(7, 8, 13, .98), rgba(7, 8, 13, .84) 76%, transparent);
-      backdrop-filter: blur(14px);
+      gap: 10px;
+      padding: 14px 0 12px;
+      background: linear-gradient(180deg, rgba(6,5,14,0.98) 0%, rgba(6,5,14,0.85) 80%, transparent 100%);
+      backdrop-filter: blur(20px) saturate(1.4);
+      -webkit-backdrop-filter: blur(20px) saturate(1.4);
     }
 
-    .brand {
-      min-width: 0;
-      padding-left: 2px;
+    .brand { text-align: center; }
+
+    .brand-name {
+      font-family: 'Cinzel', serif;
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      background: linear-gradient(135deg, var(--violet) 0%, var(--gold) 55%, var(--violet) 100%);
+      background-size: 200% 200%;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: shimmerText 4s ease infinite;
     }
 
-    .brand strong {
-      display: block;
-      font-size: 22px;
-      line-height: 1.05;
-      font-weight: 900;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .brand span {
-      display: block;
-      margin-top: 3px;
+    .brand-sub {
+      font-size: 11px;
       color: var(--muted);
-      font-size: 14px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+
+    @keyframes shimmerText {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
     }
 
     .icon-btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 54px;
-      height: 54px;
-      border-radius: 14px;
-      background: linear-gradient(180deg, rgba(35, 40, 54, .95), rgba(21, 24, 34, .95));
-      border: 1px solid var(--line-2);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 12px 28px rgba(0,0,0,.28);
-      font-size: 24px;
-      transition: transform .18s ease, border-color .18s ease, background .18s ease;
+      width: 50px;
+      height: 50px;
+      border-radius: var(--radius-sm);
+      background: rgba(138, 110, 255, 0.08);
+      border: 1px solid var(--border);
+      font-size: 22px;
+      color: var(--soft);
+      transition: all 0.2s ease;
+      backdrop-filter: blur(8px);
     }
 
-    .icon-btn:active,
-    .card:active,
-    .action:active,
-    .chapter-row:active,
-    .tab-btn:active {
-      transform: scale(.97);
-    }
+    .icon-btn:active { transform: scale(0.93); background: rgba(138, 110, 255, 0.16); }
 
+    /* ─── SEARCH ─── */
     .search {
       display: grid;
-      grid-template-columns: 1fr 58px;
-      gap: 10px;
-      margin: 2px 0 22px;
+      grid-template-columns: 1fr 54px;
+      gap: 8px;
+      margin: 4px 0 24px;
+    }
+
+    .search-wrap {
+      position: relative;
+    }
+
+    .search-wrap::before {
+      content: "⌕";
+      position: absolute;
+      left: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 18px;
+      color: var(--muted);
+      pointer-events: none;
+      z-index: 1;
     }
 
     .search input {
-      min-width: 0;
-      height: 58px;
-      border: 1px solid var(--line-2);
-      border-radius: 16px;
-      padding: 0 18px;
+      width: 100%;
+      height: 54px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0 16px 0 44px;
       color: var(--text);
-      background: rgba(17, 19, 28, .92);
-      outline: none;
-      font-size: 17px;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
-      transition: border-color .18s ease, box-shadow .18s ease;
+      background: rgba(16, 14, 32, 0.88);
+      font-size: 16px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      backdrop-filter: blur(10px);
     }
+
+    .search input::placeholder { color: var(--muted); }
 
     .search input:focus {
-      border-color: rgba(255, 48, 72, .72);
-      box-shadow: 0 0 0 4px rgba(255, 48, 72, .11), inset 0 1px 0 rgba(255,255,255,.06);
+      border-color: rgba(155, 109, 255, 0.6);
+      box-shadow: 0 0 0 3px rgba(155, 109, 255, 0.12), inset 0 1px 0 rgba(255,255,255,0.04);
     }
 
-    .primary,
-    .action.hot {
-      background: linear-gradient(135deg, var(--red), #ff5a40);
-      color: white;
-      box-shadow: 0 16px 32px rgba(255, 48, 72, .28);
+    .btn-search {
+      width: 54px;
+      height: 54px;
+      border-radius: var(--radius);
+      font-size: 20px;
+      background: linear-gradient(135deg, var(--purple2), #4a2ab0);
+      box-shadow: 0 8px 24px rgba(124, 77, 232, 0.4);
+      transition: all 0.2s ease;
     }
 
-    .primary {
-      border-radius: 16px;
-      font-size: 22px;
-      font-weight: 900;
-    }
+    .btn-search:active { transform: scale(0.93); box-shadow: 0 4px 12px rgba(124, 77, 232, 0.3); }
 
-    h1, h2, h3, p { margin: 0; }
+    /* ─── SECTIONS ─── */
+    h2, h3 { font-family: 'Cinzel', serif; }
 
-    h2 {
-      font-size: 22px;
-      line-height: 1.1;
-      font-weight: 900;
-    }
-
-    .section {
-      margin: 22px 0 28px;
-      animation: rise .35s ease both;
-    }
+    .section { margin: 0 0 32px; animation: fadeUp 0.4s ease both; }
 
     .section-head {
       display: flex;
       align-items: baseline;
       justify-content: space-between;
       gap: 12px;
-      margin: 0 0 12px;
+      margin: 0 0 14px;
     }
 
-    .muted { color: var(--muted); }
+    .section-title {
+      font-family: 'Cinzel', serif;
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--soft);
+      letter-spacing: 0.02em;
+    }
 
+    .section-count {
+      font-size: 12px;
+      color: var(--muted);
+      background: rgba(138, 110, 255, 0.12);
+      border: 1px solid var(--border);
+      border-radius: 99px;
+      padding: 2px 10px;
+    }
+
+    /* ─── RAIL ─── */
     .rail {
       display: grid;
       grid-auto-flow: column;
-      grid-auto-columns: minmax(172px, 36%);
-      gap: 14px;
+      grid-auto-columns: minmax(154px, 32%);
+      gap: 12px;
       overflow-x: auto;
-      padding: 1px 2px 8px;
+      padding: 2px 2px 10px;
       scroll-snap-type: x mandatory;
       scrollbar-width: none;
     }
-
     .rail::-webkit-scrollbar { display: none; }
 
     .grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(164px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
       gap: 14px;
     }
 
+    /* ─── CARD ─── */
     .card {
       position: relative;
-      min-width: 0;
-      overflow: hidden;
       border-radius: var(--radius);
-      background: linear-gradient(180deg, rgba(25, 29, 39, .96), rgba(16, 18, 27, .96));
-      border: 1px solid var(--line-2);
+      background: linear-gradient(170deg, rgba(24, 20, 48, 0.96), rgba(14, 12, 28, 0.96));
+      border: 1px solid var(--border);
+      overflow: hidden;
       scroll-snap-align: start;
       text-align: left;
-      box-shadow: var(--shadow);
-      transform-origin: center;
-      transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease;
-      animation: pop .35s ease both;
+      box-shadow: var(--shadow-sm);
+      transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
+      animation: cardPop 0.35s ease both;
     }
 
+    .card:active {
+      transform: scale(0.96);
+      border-color: rgba(155, 109, 255, 0.4);
+      box-shadow: var(--glow), var(--shadow-sm);
+    }
+
+    /* Card shine sweep */
     .card::after {
       content: "";
       position: absolute;
       inset: 0;
-      background: linear-gradient(135deg, transparent 45%, rgba(255,255,255,.08), transparent 58%);
-      transform: translateX(-120%);
-      transition: transform .42s ease;
+      background: linear-gradient(135deg, transparent 40%, rgba(255,255,255,0.06) 50%, transparent 60%);
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
     }
-
-    .card:active::after { transform: translateX(120%); }
+    .card:active::after { opacity: 1; }
 
     .cover-wrap {
       position: relative;
       aspect-ratio: 3 / 4;
       overflow: hidden;
-      background: linear-gradient(135deg, rgba(255,48,72,.22), rgba(69,199,255,.12));
+      background: linear-gradient(135deg, rgba(80, 40, 180, 0.3), rgba(20, 10, 60, 0.6));
     }
 
     .cover {
       width: 100%;
       height: 100%;
       object-fit: cover;
-      display: block;
-      transform: scale(1.01);
+      transition: transform 0.4s ease;
     }
+
+    .card:active .cover { transform: scale(1.04); }
 
     .cover-fallback {
       display: grid;
       place-items: center;
       width: 100%;
       height: 100%;
-      padding: 18px;
-      color: rgba(255,255,255,.82);
-      font-weight: 900;
+      padding: 16px;
       text-align: center;
-      background:
-        radial-gradient(circle at 25% 20%, rgba(255,255,255,.18), transparent 10rem),
-        linear-gradient(135deg, #38111b, #151927 55%, #0c1018);
+      font-family: 'Cinzel', serif;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--violet);
+      background: linear-gradient(135deg, #1a0e3a 0%, #0d0a1e 60%, #12082a 100%);
+    }
+
+    /* Cover vignette */
+    .cover-wrap::after {
+      content: "";
+      position: absolute;
+      bottom: 0;
+      left: 0; right: 0;
+      height: 65%;
+      background: linear-gradient(to top, rgba(8,6,20,0.92) 0%, transparent 100%);
+      pointer-events: none;
     }
 
     .cap-badge {
       position: absolute;
-      left: 10px;
-      bottom: 10px;
-      max-width: calc(100% - 20px);
-      padding: 6px 9px;
-      border-radius: 999px;
-      background: rgba(0,0,0,.66);
-      border: 1px solid rgba(255,255,255,.12);
-      color: white;
-      font-size: 12px;
-      font-weight: 800;
-      backdrop-filter: blur(8px);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      bottom: 8px;
+      left: 8px;
+      z-index: 1;
+      padding: 4px 10px;
+      border-radius: 99px;
+      background: rgba(155, 109, 255, 0.22);
+      border: 1px solid rgba(155, 109, 255, 0.35);
+      color: var(--violet);
+      font-size: 11px;
+      font-weight: 700;
+      backdrop-filter: blur(10px);
+      letter-spacing: 0.04em;
     }
 
-    .card-body {
-      padding: 13px 13px 15px;
-    }
+    .card-body { padding: 11px 12px 13px; }
 
     .card-title {
-      min-height: 42px;
-      font-weight: 900;
-      line-height: 1.16;
-      font-size: 16px;
+      font-size: 14px;
+      font-weight: 600;
+      line-height: 1.28;
       overflow: hidden;
       display: -webkit-box;
       -webkit-line-clamp: 2;
       -webkit-box-orient: vertical;
+      color: var(--soft);
+      min-height: 36px;
     }
 
     .card-meta {
-      margin-top: 10px;
+      margin-top: 6px;
+      font-size: 12px;
       color: var(--muted);
-      font-size: 14px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      display: flex;
+      align-items: center;
+      gap: 5px;
     }
 
+    .card-meta::before {
+      content: "";
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--purple);
+      opacity: 0.7;
+      flex-shrink: 0;
+    }
+
+    /* ─── SPOTLIGHT ─── */
     .spotlight {
       position: relative;
       display: grid;
-      min-height: 330px;
+      min-height: 300px;
       overflow: hidden;
-      border-radius: 24px;
-      border: 1px solid var(--line-2);
-      background: #11141c;
-      box-shadow: var(--shadow);
-      animation: rise .42s ease both;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border2);
+      background: var(--bg3);
+      box-shadow: var(--shadow), var(--glow);
+      animation: fadeUp 0.45s ease both;
+      text-align: left;
+      margin-bottom: 28px;
+      cursor: pointer;
     }
 
     .spotlight-bg {
-      grid-area: 1 / 1;
+      grid-area: 1/1;
       width: 100%;
       height: 100%;
       object-fit: cover;
-      filter: saturate(1.06) brightness(.56);
-      transform: scale(1.02);
+      filter: saturate(1.2) brightness(0.5);
+      transform: scale(1.03);
+      transition: transform 0.5s ease;
     }
 
+    .spotlight:active .spotlight-bg { transform: scale(1.0); }
+
     .spotlight-fallback {
-      grid-area: 1 / 1;
+      grid-area: 1/1;
+      background: linear-gradient(135deg, #2a1060, #0e0830 55%, #0a081c);
+    }
+
+    /* Multi-layer overlay for cinematic effect */
+    .spotlight-overlay {
+      grid-area: 1/1;
       background:
-        radial-gradient(circle at 20% 20%, rgba(255,48,72,.45), transparent 18rem),
-        linear-gradient(135deg, #36101a, #11141d 62%, #07121a);
+        linear-gradient(to right, rgba(6,4,18,0.85) 0%, transparent 60%),
+        linear-gradient(to top, rgba(6,4,18,0.95) 0%, transparent 55%);
+      pointer-events: none;
     }
 
     .spotlight-info {
-      grid-area: 1 / 1;
+      grid-area: 1/1;
       align-self: end;
-      padding: 22px;
-      background: linear-gradient(180deg, transparent, rgba(0,0,0,.85) 78%);
+      padding: 24px 22px;
+      position: relative;
+      z-index: 2;
     }
 
-    .spotlight-info h1 {
-      max-width: 780px;
-      font-size: clamp(34px, 10vw, 64px);
-      line-height: .95;
-      font-weight: 950;
-      text-shadow: 0 6px 22px rgba(0,0,0,.45);
+    .spotlight-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 8px;
     }
 
-    .chips {
+    .spotlight-eyebrow::before {
+      content: "";
+      width: 18px;
+      height: 2px;
+      background: var(--gold);
+      border-radius: 1px;
+    }
+
+    .spotlight-title {
+      font-family: 'Cinzel', serif;
+      font-size: clamp(28px, 8vw, 52px);
+      font-weight: 900;
+      line-height: 0.95;
+      color: var(--text);
+      text-shadow: 0 4px 20px rgba(0,0,0,0.6);
+      max-width: 82%;
+    }
+
+    .spotlight-chips {
       display: flex;
       flex-wrap: wrap;
-      gap: 8px;
-      margin: 14px 0 0;
+      gap: 7px;
+      margin-top: 14px;
     }
 
     .chip {
       display: inline-flex;
       align-items: center;
-      min-height: 30px;
-      padding: 5px 10px;
-      border-radius: 999px;
-      background: rgba(255,255,255,.1);
-      border: 1px solid rgba(255,255,255,.11);
-      color: var(--soft);
-      font-size: 13px;
-      font-weight: 700;
-      backdrop-filter: blur(8px);
+      height: 26px;
+      padding: 0 11px;
+      border-radius: 99px;
+      font-size: 12px;
+      font-weight: 600;
+      backdrop-filter: blur(10px);
+      letter-spacing: 0.03em;
     }
 
-    .detail {
-      display: grid;
-      gap: 18px;
-      animation: rise .32s ease both;
+    .chip-default {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: var(--soft);
     }
+
+    .chip-purple {
+      background: rgba(155, 109, 255, 0.2);
+      border: 1px solid rgba(155, 109, 255, 0.35);
+      color: var(--violet);
+    }
+
+    .chip-gold {
+      background: rgba(240, 192, 96, 0.15);
+      border: 1px solid rgba(240, 192, 96, 0.3);
+      color: var(--gold);
+    }
+
+    /* ─── DETAIL ─── */
+    .detail { display: grid; gap: 16px; animation: fadeUp 0.32s ease both; }
 
     .detail-hero {
       position: relative;
       display: grid;
-      grid-template-columns: 122px 1fr;
+      grid-template-columns: 110px 1fr;
       gap: 16px;
-      min-height: 190px;
-      padding: 16px;
+      padding: 18px;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border2);
       overflow: hidden;
-      border-radius: 24px;
-      border: 1px solid var(--line-2);
-      background: linear-gradient(135deg, rgba(34, 14, 24, .94), rgba(16, 20, 30, .96));
       box-shadow: var(--shadow);
     }
 
-    .detail-hero::before {
-      content: "";
+    .detail-hero-blur {
       position: absolute;
       inset: 0;
-      background: var(--hero-image, none) center / cover;
-      filter: blur(26px) saturate(1.1) brightness(.45);
-      opacity: .52;
-      transform: scale(1.14);
+      background-size: cover;
+      background-position: center;
+      filter: blur(30px) saturate(1.3) brightness(0.35);
+      transform: scale(1.15);
+      opacity: 0.6;
     }
 
-    .poster,
-    .detail-info {
-      position: relative;
-      z-index: 1;
+    .detail-hero-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(12,8,30,0.7) 0%, rgba(8,6,18,0.5) 100%);
     }
 
     .poster {
-      width: 122px;
-      aspect-ratio: 3 / 4;
-      border-radius: 18px;
+      position: relative;
+      z-index: 1;
+      width: 110px;
+      aspect-ratio: 3/4;
+      border-radius: var(--radius);
       object-fit: cover;
-      background: linear-gradient(135deg, rgba(255,48,72,.25), rgba(69,199,255,.12));
-      border: 1px solid rgba(255,255,255,.14);
-      box-shadow: 0 18px 40px rgba(0,0,0,.4);
+      border: 1px solid var(--border2);
+      box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    }
+
+    .poster-fallback {
+      position: relative;
+      z-index: 1;
+      width: 110px;
+      aspect-ratio: 3/4;
+      border-radius: var(--radius);
+      border: 1px solid var(--border2);
+      background: linear-gradient(135deg, #1e0c44, #0d0825);
+      display: grid;
+      place-items: center;
+      font-family: 'Cinzel', serif;
+      font-size: 12px;
+      color: var(--violet);
+      text-align: center;
+      padding: 10px;
     }
 
     .detail-info {
+      position: relative;
+      z-index: 1;
       min-width: 0;
-      align-self: center;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
     }
 
     .detail-title {
-      font-size: clamp(25px, 7vw, 42px);
-      line-height: 1.02;
-      font-weight: 950;
+      font-family: 'Cinzel', serif;
+      font-size: clamp(20px, 5.5vw, 36px);
+      font-weight: 900;
+      line-height: 1.05;
+      color: var(--text);
       overflow-wrap: anywhere;
+      margin-bottom: 10px;
     }
 
+    .detail-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+
+    /* ─── ACTIONS ─── */
     .actions {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 10px;
-      margin-top: 12px;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
     }
 
     .action {
-      min-height: 50px;
-      border-radius: 15px;
-      padding: 0 14px;
-      font-weight: 900;
-      background: linear-gradient(180deg, rgba(35,40,54,.98), rgba(22,25,35,.98));
-      border: 1px solid var(--line-2);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
-      transition: transform .18s ease, border-color .18s ease, background .18s ease;
+      min-height: 46px;
+      border-radius: var(--radius-sm);
+      padding: 0 12px;
+      font-size: 13px;
+      font-weight: 700;
+      background: rgba(138, 110, 255, 0.1);
+      border: 1px solid var(--border);
+      transition: all 0.18s ease;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      letter-spacing: 0.01em;
+    }
+
+    .action:active { transform: scale(0.96); }
+
+    .action.hot {
+      background: linear-gradient(135deg, #7c2de8, #5a1faa);
+      border-color: rgba(155, 109, 255, 0.4);
+      color: #fff;
+      box-shadow: 0 8px 24px rgba(124, 45, 232, 0.35);
     }
 
     .action.good {
-      background: linear-gradient(135deg, #176b3b, #2fb66a);
+      background: linear-gradient(135deg, #0e5e3a, #1aaa6a);
+      border-color: rgba(78, 210, 140, 0.3);
+      color: #fff;
     }
 
     .action.blue {
-      background: linear-gradient(135deg, #155476, #2898c7);
+      background: linear-gradient(135deg, #0e3d6e, #1a7acc);
+      border-color: rgba(78, 160, 240, 0.3);
+      color: #fff;
     }
 
+    /* ─── SYNOPSIS ─── */
     .synopsis-box {
       padding: 16px;
-      border-radius: 20px;
-      border: 1px solid var(--line);
-      background: rgba(13, 15, 23, .66);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: rgba(12, 10, 26, 0.7);
+      backdrop-filter: blur(10px);
+    }
+
+    .synopsis-label {
+      font-family: 'Cinzel', serif;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--purple);
+      margin-bottom: 10px;
     }
 
     .synopsis {
-      color: #e2e6f1;
-      font-size: 16px;
-      line-height: 1.72;
+      color: var(--soft);
+      font-size: 15px;
+      line-height: 1.78;
+      font-weight: 300;
     }
 
     .synopsis.collapsed {
@@ -487,137 +656,226 @@
     .text-btn {
       margin-top: 12px;
       padding: 0;
-      color: var(--blue);
+      color: var(--violet);
       background: transparent;
-      font-weight: 800;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    /* ─── CHAPTER LIST ─── */
+    .chapters-panel {
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border);
+      overflow: hidden;
+      background: rgba(12, 10, 26, 0.6);
+    }
+
+    .chapters-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(20, 16, 42, 0.8);
+    }
+
+    .chapters-title-row {
+      font-family: 'Cinzel', serif;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--soft);
     }
 
     .chapter-tools {
       display: grid;
       grid-template-columns: 1fr auto;
-      gap: 10px;
-      margin: 0 0 12px;
+      gap: 8px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
     }
 
     .chapter-tools input {
-      min-width: 0;
-      height: 44px;
-      border-radius: 13px;
-      border: 1px solid var(--line);
-      padding: 0 13px;
+      height: 40px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      padding: 0 12px;
       color: var(--text);
-      background: rgba(15, 17, 25, .88);
-      outline: none;
+      background: rgba(16, 14, 32, 0.9);
+      font-size: 14px;
+      transition: border-color 0.18s;
     }
 
-    .chapter-list {
-      display: grid;
-      gap: 10px;
-    }
+    .chapter-tools input:focus { border-color: rgba(155, 109, 255, 0.5); }
+
+    .chapter-list { display: grid; }
 
     .chapter-row {
       display: grid;
-      grid-template-columns: 1fr auto;
+      grid-template-columns: auto 1fr auto;
       align-items: center;
-      gap: 14px;
+      gap: 12px;
       width: 100%;
-      min-height: 62px;
-      padding: 12px 14px;
+      min-height: 58px;
+      padding: 10px 16px;
       text-align: left;
-      border-radius: 16px;
-      background: linear-gradient(180deg, rgba(24, 28, 39, .94), rgba(15, 18, 27, .94));
-      border: 1px solid var(--line);
-      box-shadow: 0 12px 32px rgba(0,0,0,.2);
-      transition: transform .18s ease, border-color .18s ease;
-      animation: rowIn .28s ease both;
+      background: transparent;
+      border-bottom: 1px solid rgba(138, 110, 255, 0.07);
+      transition: background 0.15s ease;
+      animation: rowIn 0.3s ease both;
     }
 
-    .chapter-row strong {
-      font-size: 16px;
-      line-height: 1.2;
-      overflow-wrap: anywhere;
+    .chapter-row:last-child { border-bottom: 0; }
+    .chapter-row:active { background: rgba(155, 109, 255, 0.08); }
+
+    .chapter-num {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--purple);
+      background: rgba(155, 109, 255, 0.1);
+      border: 1px solid rgba(155, 109, 255, 0.15);
+      flex-shrink: 0;
     }
 
-    .chapter-row span {
-      margin-top: 3px;
+    .chapter-info strong {
       display: block;
-      color: var(--muted);
-      font-size: 13px;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--soft);
+      line-height: 1.2;
     }
 
-    .chapter-row .arrow {
-      color: var(--red);
-      font-size: 20px;
+    .chapter-info span {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 2px;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .chapter-arrow {
+      color: rgba(155, 109, 255, 0.5);
+      font-size: 18px;
       font-weight: 900;
     }
 
-    .empty, .loading {
-      position: relative;
-      overflow: hidden;
-      padding: 36px 18px;
+    /* ─── LOADING / EMPTY / ERROR ─── */
+    .loading, .empty, .error-box {
+      padding: 40px 20px;
       text-align: center;
       color: var(--muted);
-      border-radius: 20px;
-      background: rgba(18, 21, 30, .78);
-      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      background: rgba(16, 14, 32, 0.7);
+      border: 1px solid var(--border);
+      position: relative;
+      overflow: hidden;
     }
 
-    .loading::after,
-    .skeleton::after {
+    .loading-icon {
+      font-size: 36px;
+      margin-bottom: 12px;
+      display: block;
+      animation: spinY 2s linear infinite;
+    }
+
+    @keyframes spinY {
+      0% { transform: rotateY(0deg); }
+      100% { transform: rotateY(360deg); }
+    }
+
+    .loading-text {
+      font-size: 14px;
+      letter-spacing: 0.05em;
+    }
+
+    .loading::after {
       content: "";
       position: absolute;
-      inset: 0;
-      background: linear-gradient(100deg, transparent 35%, rgba(255,255,255,.08), transparent 65%);
-      transform: translateX(-100%);
-      animation: shimmer 1.15s infinite;
+      top: 0; left: -100%;
+      width: 100%; height: 3px;
+      background: linear-gradient(90deg, transparent, var(--purple), var(--violet), transparent);
+      animation: loadBar 1.5s ease infinite;
     }
 
-    .skeleton-grid {
+    @keyframes loadBar {
+      0% { left: -100%; }
+      100% { left: 100%; }
+    }
+
+    .empty-icon { font-size: 40px; margin-bottom: 12px; display: block; opacity: 0.5; }
+    .empty-text { font-size: 15px; }
+    .empty-sub  { font-size: 13px; color: var(--muted); margin-top: 6px; }
+
+    /* ─── SKELETON ─── */
+    .skeleton-rail {
       display: grid;
       grid-auto-flow: column;
-      grid-auto-columns: minmax(172px, 36%);
-      gap: 14px;
+      grid-auto-columns: minmax(154px, 32%);
+      gap: 12px;
       overflow: hidden;
     }
 
     .skeleton {
       position: relative;
-      height: 286px;
       overflow: hidden;
-      border-radius: 18px;
-      background: rgba(255,255,255,.06);
-      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
     }
 
+    .skeleton::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(105deg, transparent 35%, rgba(155, 109, 255, 0.07) 50%, transparent 65%);
+      transform: translateX(-100%);
+      animation: skeletonShimmer 1.4s infinite;
+    }
+
+    @keyframes skeletonShimmer {
+      to { transform: translateX(100%); }
+    }
+
+    /* ─── READER ─── */
     .reader-mode .search,
-    .reader-mode .bottom-nav {
-      display: none;
-    }
+    .reader-mode .bottom-nav { display: none; }
+    .reader-mode .app { padding-bottom: 16px; }
 
-    .reader-mode .app {
-      padding-bottom: 22px;
-    }
-
-    .reader {
-      display: grid;
-      gap: 14px;
-      animation: rise .28s ease both;
-    }
+    .reader { display: grid; gap: 14px; animation: fadeUp 0.28s ease both; }
 
     .reader-head {
       position: sticky;
-      top: 78px;
-      z-index: 12;
-      padding: 12px;
-      border-radius: 18px;
-      background: rgba(13, 15, 22, .88);
-      border: 1px solid var(--line);
-      backdrop-filter: blur(12px);
+      top: 80px;
+      z-index: 20;
+      padding: 14px;
+      border-radius: var(--radius);
+      background: rgba(10, 8, 22, 0.94);
+      border: 1px solid var(--border2);
+      backdrop-filter: blur(16px);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .reader-eyebrow {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--purple);
+      margin-bottom: 4px;
     }
 
     .reader-title {
-      font-size: 18px;
-      font-weight: 950;
+      font-family: 'Cinzel', serif;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--soft);
       line-height: 1.2;
     }
 
@@ -631,58 +889,78 @@
       font-size: 13px;
     }
 
-    .progress {
-      height: 6px;
+    .progress-bar {
+      height: 4px;
       margin-top: 10px;
-      border-radius: 999px;
-      background: rgba(255,255,255,.09);
+      border-radius: 99px;
+      background: rgba(255,255,255,0.06);
       overflow: hidden;
     }
 
-    .progress span {
-      display: block;
-      width: var(--progress, 0%);
+    .progress-fill {
       height: 100%;
       border-radius: inherit;
-      background: linear-gradient(90deg, var(--red), var(--gold));
-      transition: width .22s ease;
+      background: linear-gradient(90deg, var(--purple), var(--gold));
+      transition: width 0.25s ease;
     }
 
     .reader-tools {
       display: flex;
-      gap: 8px;
+      gap: 6px;
       margin-top: 10px;
     }
 
     .tool {
-      min-width: 38px;
-      height: 36px;
-      border-radius: 11px;
-      background: rgba(255,255,255,.08);
-      border: 1px solid var(--line);
-      font-weight: 900;
+      height: 34px;
+      min-width: 40px;
+      border-radius: 9px;
+      padding: 0 10px;
+      font-size: 13px;
+      font-weight: 700;
+      background: rgba(138, 110, 255, 0.1);
+      border: 1px solid var(--border);
+      color: var(--soft);
+      transition: all 0.15s;
     }
 
+    .tool:active { background: rgba(138, 110, 255, 0.22); transform: scale(0.95); }
+
     .reader-page {
-      padding: 24px 18px;
-      border-radius: 22px;
-      background: rgba(246, 242, 232, .98);
-      color: #171513;
+      padding: 26px 20px;
+      border-radius: var(--radius-lg);
+      background: rgba(248, 244, 234, 0.97);
+      color: #1e1a14;
       box-shadow: var(--shadow);
-      min-height: calc(100vh - 250px);
+      min-height: calc(100vh - 280px);
     }
 
     .reader-page.dark {
-      background: rgba(13, 15, 22, .94);
-      color: #e9edf7;
-      border: 1px solid var(--line);
+      background: rgba(10, 8, 20, 0.96);
+      color: #d8d4ee;
+      border: 1px solid var(--border);
     }
 
     .reader-page p {
-      margin: 0 0 1.08em;
-      font-size: var(--reader-font, 19px);
-      line-height: 1.82;
+      font-size: var(--reader-font, 18px);
+      line-height: 1.88;
+      margin: 0 0 1.1em;
+      font-weight: 300;
     }
+
+    .reader-page.dark p { font-weight: 300; }
+
+    /* Drop cap for first paragraph */
+    .reader-page p:first-child::first-letter {
+      font-family: 'Cinzel', serif;
+      font-size: 3.4em;
+      font-weight: 900;
+      float: left;
+      line-height: 0.78;
+      margin: 0.06em 0.08em 0 0;
+      color: var(--purple2);
+    }
+
+    .reader-page.dark p:first-child::first-letter { color: var(--violet); }
 
     .reader-controls {
       position: sticky;
@@ -691,36 +969,46 @@
       display: grid;
       grid-template-columns: 1fr auto 1fr;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
       padding: 10px;
-      border-radius: 18px;
-      background: rgba(16, 19, 28, .94);
-      border: 1px solid var(--line-2);
+      border-radius: var(--radius);
+      background: rgba(10, 8, 22, 0.94);
+      border: 1px solid var(--border2);
       backdrop-filter: blur(14px);
-      box-shadow: var(--shadow);
+      box-shadow: var(--shadow), var(--glow);
     }
 
+    .reader-pct {
+      font-family: 'Cinzel', serif;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    /* ─── BOTTOM NAV ─── */
     .bottom-nav {
       position: fixed;
       left: 50%;
-      bottom: max(12px, env(safe-area-inset-bottom));
-      z-index: 40;
+      bottom: max(10px, env(safe-area-inset-bottom));
+      z-index: 60;
       transform: translateX(-50%);
-      width: min(calc(100% - 22px), 560px);
+      width: min(calc(100% - 20px), 520px);
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 6px;
-      padding: 8px;
+      gap: 4px;
+      padding: 6px;
       border-radius: 22px;
-      background: rgba(18, 21, 30, .94);
-      border: 1px solid var(--line-2);
-      backdrop-filter: blur(16px);
-      box-shadow: var(--shadow);
+      background: rgba(10, 8, 22, 0.96);
+      border: 1px solid var(--border2);
+      backdrop-filter: blur(20px) saturate(1.5);
+      -webkit-backdrop-filter: blur(20px) saturate(1.5);
+      box-shadow: var(--shadow), var(--glow);
     }
 
     .tab-btn {
       min-width: 0;
-      height: 58px;
+      height: 56px;
       border-radius: 16px;
       display: inline-flex;
       flex-direction: column;
@@ -730,94 +1018,162 @@
       color: var(--muted);
       background: transparent;
       border: 1px solid transparent;
-      font-size: 12px;
-      transition: background .18s ease, color .18s ease, border-color .18s ease;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      transition: all 0.2s ease;
     }
 
     .tab-btn b {
-      font-size: 18px;
+      font-size: 19px;
       line-height: 1;
     }
 
     .tab-btn.active {
-      color: white;
-      background: linear-gradient(135deg, rgba(255,48,72,.32), rgba(255,48,72,.12));
-      border-color: rgba(255,48,72,.42);
+      color: var(--violet);
+      background: rgba(155, 109, 255, 0.14);
+      border-color: rgba(155, 109, 255, 0.28);
     }
 
+    .tab-btn:active { transform: scale(0.94); }
+
+    /* ─── PROFILE STATS ─── */
     .stats {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
     }
 
     .stat {
-      min-height: 104px;
-      padding: 16px;
-      border-radius: 20px;
-      background: linear-gradient(180deg, rgba(25,29,40,.94), rgba(14,16,24,.94));
-      border: 1px solid var(--line);
-      box-shadow: 0 14px 34px rgba(0,0,0,.22);
+      padding: 18px 16px;
+      border-radius: var(--radius);
+      background: linear-gradient(170deg, rgba(24, 20, 52, 0.94), rgba(14, 12, 30, 0.94));
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow-sm);
     }
 
-    .stat strong {
+    .stat-value {
+      font-family: 'Cinzel', serif;
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--violet);
       display: block;
-      font-size: 30px;
-      line-height: 1;
-      font-weight: 950;
-      color: white;
     }
 
-    .stat span {
+    .stat-label {
       display: block;
-      margin-top: 10px;
+      font-size: 12px;
       color: var(--muted);
-      font-size: 13px;
+      margin-top: 6px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
     }
 
-    @keyframes drift {
-      from { transform: translate3d(0, 0, 0); }
-      to { transform: translate3d(80px, 0, 0); }
+    /* Ornamental divider */
+    .ornament {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 4px 0 16px;
+      color: rgba(155, 109, 255, 0.3);
+      font-size: 12px;
+    }
+    .ornament::before, .ornament::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(155, 109, 255, 0.25), transparent);
     }
 
-    @keyframes rise {
-      from { opacity: 0; transform: translateY(12px); }
-      to { opacity: 1; transform: translateY(0); }
+    /* History row */
+    .history-row {
+      display: grid;
+      grid-template-columns: 48px 1fr auto;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      text-align: left;
+      border-bottom: 1px solid rgba(138, 110, 255, 0.06);
+      transition: background 0.15s;
+      animation: rowIn 0.28s ease both;
     }
 
-    @keyframes pop {
-      from { opacity: 0; transform: scale(.96) translateY(8px); }
-      to { opacity: 1; transform: scale(1) translateY(0); }
+    .history-row:last-child { border-bottom: 0; }
+    .history-row:active { background: rgba(155, 109, 255, 0.06); }
+
+    .history-thumb {
+      width: 48px;
+      height: 64px;
+      border-radius: 8px;
+      object-fit: cover;
+      background: rgba(155, 109, 255, 0.12);
+    }
+
+    .history-thumb-fallback {
+      width: 48px;
+      height: 64px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, rgba(80, 40, 180, 0.3), rgba(20, 10, 60, 0.5));
+      display: grid;
+      place-items: center;
+      font-size: 18px;
+    }
+
+    /* Retry button in errors */
+    .retry-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 16px;
+      padding: 10px 22px;
+      border-radius: var(--radius-sm);
+      background: linear-gradient(135deg, var(--purple2), #4a2ab0);
+      color: #fff;
+      font-size: 14px;
+      font-weight: 700;
+      box-shadow: 0 8px 24px rgba(124, 77, 232, 0.35);
+      transition: all 0.18s;
+    }
+    .retry-btn:active { transform: scale(0.95); }
+
+    /* ─── ANIMATIONS ─── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes cardPop {
+      from { opacity: 0; transform: scale(0.95) translateY(8px); }
+      to   { opacity: 1; transform: scale(1) translateY(0); }
     }
 
     @keyframes rowIn {
       from { opacity: 0; transform: translateX(-8px); }
-      to { opacity: 1; transform: translateX(0); }
+      to   { opacity: 1; transform: translateX(0); }
     }
 
-    @keyframes shimmer {
-      to { transform: translateX(100%); }
-    }
-
+    /* ─── RESPONSIVE ─── */
     @media (min-width: 760px) {
-      .app { padding-top: 22px; }
-      .rail { grid-auto-columns: minmax(180px, 21%); }
-      .skeleton-grid { grid-auto-columns: minmax(180px, 21%); }
-      .actions { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-      .stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-      .detail-hero { grid-template-columns: 160px 1fr; min-height: 250px; }
-      .poster { width: 160px; }
-      .reader-page { padding: 40px 48px; }
+      .app { padding-top: 18px; }
+      .rail { grid-auto-columns: minmax(160px, 20%); }
+      .skeleton-rail { grid-auto-columns: minmax(160px, 20%); }
+      .actions { grid-template-columns: repeat(4, 1fr); }
+      .stats { grid-template-columns: repeat(4, 1fr); }
+      .detail-hero { grid-template-columns: 150px 1fr; }
+      .poster { width: 150px; }
+      .poster-fallback { width: 150px; }
+      .reader-page { padding: 40px 52px; }
+      .spotlight { min-height: 380px; }
     }
 
     @media (max-width: 390px) {
-      .brand strong { font-size: 19px; }
-      .rail { grid-auto-columns: minmax(150px, 43%); }
-      .grid { grid-template-columns: repeat(auto-fill, minmax(145px, 1fr)); }
-      .detail-hero { grid-template-columns: 96px 1fr; }
-      .poster { width: 96px; border-radius: 14px; }
+      .brand-name { font-size: 17px; }
+      .rail { grid-auto-columns: minmax(138px, 44%); }
+      .grid { grid-template-columns: repeat(auto-fill, minmax(138px, 1fr)); }
+      .detail-hero { grid-template-columns: 90px 1fr; }
+      .poster, .poster-fallback { width: 90px; }
       .actions { grid-template-columns: 1fr; }
-      .action { min-height: 46px; }
+      .action { min-height: 44px; }
     }
   </style>
 </head>
@@ -826,33 +1182,32 @@
     <header class="topbar">
       <button class="icon-btn" id="backBtn" title="Voltar">‹</button>
       <div class="brand">
-        <strong>Novels Baltigo</strong>
-        <span id="subtitle">Inicio</span>
+        <div class="brand-name">Novels Baltigo</div>
+        <div class="brand-sub" id="subtitle">Início</div>
       </div>
       <button class="icon-btn" id="refreshBtn" title="Atualizar">↻</button>
     </header>
 
     <form class="search" id="searchForm">
-      <input id="searchInput" autocomplete="off" placeholder="Buscar novel">
-      <button class="primary" type="submit" title="Buscar">⌕</button>
+      <div class="search-wrap">
+        <input id="searchInput" autocomplete="off" placeholder="Buscar novel, título, gênero…">
+      </div>
+      <button class="btn-search" type="submit" title="Buscar">⌕</button>
     </form>
 
     <section id="view"></section>
   </main>
 
   <nav class="bottom-nav">
-    <button class="tab-btn active" data-tab="home"><b>⌂</b><span>Inicio</span></button>
-    <button class="tab-btn" data-tab="history"><b>◴</b><span>Historico</span></button>
+    <button class="tab-btn active" data-tab="home"><b>⌂</b><span>Início</span></button>
+    <button class="tab-btn" data-tab="history"><b>◴</b><span>Histórico</span></button>
     <button class="tab-btn" data-tab="favorites"><b>★</b><span>Favoritos</span></button>
     <button class="tab-btn" data-tab="profile"><b>☻</b><span>Perfil</span></button>
   </nav>
 
   <script>
     const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
-    if (tg) {
-      tg.ready();
-      tg.expand();
-    }
+    if (tg) { tg.ready(); tg.expand(); }
 
     const qs = new URLSearchParams(location.search);
     const apiBase = location.origin;
@@ -866,73 +1221,59 @@
       currentChapter: null,
       currentPages: [],
       currentPage: 1,
-      readerFont: Number(localStorage.getItem("novel_reader_font") || 19),
+      readerFont: Number(localStorage.getItem("novel_reader_font") || 18),
       readerDark: localStorage.getItem("novel_reader_dark") === "1"
     };
 
-    const view = document.getElementById("view");
-    const subtitle = document.getElementById("subtitle");
+    const view       = document.getElementById("view");
+    const subtitle   = document.getElementById("subtitle");
     const searchForm = document.getElementById("searchForm");
     const searchInput = document.getElementById("searchInput");
-    const backBtn = document.getElementById("backBtn");
+    const backBtn    = document.getElementById("backBtn");
     const refreshBtn = document.getElementById("refreshBtn");
 
     const storage = {
       get(key, fallback) {
-        try {
-          const value = JSON.parse(localStorage.getItem(key));
-          return value ?? fallback;
-        } catch (_) {
-          return fallback;
-        }
+        try { const v = JSON.parse(localStorage.getItem(key)); return v ?? fallback; }
+        catch (_) { return fallback; }
       },
-      set(key, value) {
-        localStorage.setItem(key, JSON.stringify(value));
-      }
+      set(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
     };
 
-    const localProgressKey = `novel_progress:${userId}`;
+    const localProgressKey  = `novel_progress:${userId}`;
     const localFavoritesKey = `novel_favorites:${userId}`;
 
-    function escapeHtml(value) {
-      return String(value || "").replace(/[&<>"']/g, char => ({
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        "\"": "&quot;",
-        "'": "&#039;"
-      }[char]));
+    function escapeHtml(v) {
+      return String(v || "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
     }
 
     async function api(path, options = {}) {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), options.timeout || 18000);
       try {
-        const response = await fetch(`${apiBase}${path}`, {
+        const res = await fetch(`${apiBase}${path}`, {
           headers: { "Content-Type": "application/json" },
           cache: "no-store",
           ...options,
           signal: controller.signal
         });
-        if (!response.ok) {
-          const error = await response.json().catch(() => ({}));
-          throw new Error(error.detail || `HTTP ${response.status}`);
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.detail || `HTTP ${res.status}`);
         }
-        return response.json();
-      } catch (error) {
-        if (error.name === "AbortError") {
-          throw new Error("Demorou demais para carregar. Tente de novo.");
-        }
-        throw error;
+        return res.json();
+      } catch (err) {
+        if (err.name === "AbortError") throw new Error("Demorou demais para carregar. Tente de novo.");
+        throw err;
       } finally {
         clearTimeout(timeout);
       }
     }
 
-    function chapterNumberText(value) {
-      if (!value) return "";
-      if (typeof value === "object") return value.chapter_number || value.chapter_id || "";
-      return value;
+    function chapterNumberText(v) {
+      if (!v) return "";
+      if (typeof v === "object") return v.chapter_number || v.chapter_id || "";
+      return v;
     }
 
     function coverOf(item) {
@@ -945,38 +1286,49 @@
       document.body.classList.toggle("reader-mode", route === "reader");
     }
 
+    /* ── Loading states ── */
     function skeletonHome() {
+      const skels = Array(5).fill(0).map((_, i) =>
+        `<div class="skeleton" style="height:240px;animation-delay:${i*60}ms"></div>`
+      ).join("");
       view.innerHTML = `
-        <section class="section">
-          <div class="section-head"><h2>Carregando</h2><span class="muted">aguarde</span></div>
-          <div class="skeleton-grid">
-            <div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>
-          </div>
-        </section>
-        <section class="section">
-          <div class="skeleton" style="height:130px"></div>
-        </section>`;
+        <div style="height:240px;border-radius:26px;margin-bottom:28px;position:relative;overflow:hidden;background:rgba(255,255,255,0.03);border:1px solid var(--border)">
+          <div class="skeleton" style="height:100%;border-radius:0;border:0"></div>
+        </div>
+        <div class="section">
+          <div class="ornament">✦</div>
+          <div class="skeleton-rail">${skels}</div>
+        </div>`;
     }
 
     function setLoading(text = "Carregando") {
-      view.innerHTML = `<div class="loading">${escapeHtml(text)}</div>`;
+      view.innerHTML = `
+        <div class="loading">
+          <span class="loading-icon">📖</span>
+          <div class="loading-text">${escapeHtml(text)}…</div>
+        </div>`;
     }
 
-    function empty(text, action = "") {
-      return `<div class="empty">${escapeHtml(text)}${action}</div>`;
+    function emptyHtml(text, sub = "", action = "") {
+      return `<div class="empty">
+        <span class="empty-icon">🌙</span>
+        <div class="empty-text">${escapeHtml(text)}</div>
+        ${sub ? `<div class="empty-sub">${escapeHtml(sub)}</div>` : ""}
+        ${action}
+      </div>`;
     }
 
     function imageOrFallback(src, title, cls = "cover") {
       if (!src) return `<div class="cover-fallback ${cls}">${escapeHtml(title || "Novel")}</div>`;
-      return `<img class="${cls}" src="${escapeHtml(src)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'cover-fallback ${cls}',textContent:'${escapeHtml(title || "Novel").replace(/'/g, "\\'")}'}))">`;
+      return `<img class="${cls}" src="${escapeHtml(src)}" alt="" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'cover-fallback ${cls}',textContent:'${escapeHtml(title||'Novel').replace(/'/g,"\\'")}'}))">`;
     }
 
     function card(item, index = 0) {
-      const title = item.display_title || item.title || "Novel";
+      const title   = item.display_title || item.title || "Novel";
       const chapter = chapterNumberText(item.latest_chapter || item.chapter_number);
-      const cover = coverOf(item);
+      const cover   = coverOf(item);
       return `
-        <button class="card" data-title="${escapeHtml(item.title_id)}" style="animation-delay:${Math.min(index * 35, 280)}ms">
+        <button class="card" data-title="${escapeHtml(item.title_id)}" style="animation-delay:${Math.min(index*40, 300)}ms">
           <div class="cover-wrap">
             ${imageOrFallback(cover, title)}
             ${chapter ? `<span class="cap-badge">Cap. ${escapeHtml(chapter)}</span>` : ""}
@@ -989,55 +1341,73 @@
     }
 
     function bindCards(root = view) {
-      root.querySelectorAll("[data-title]").forEach(button => {
-        button.addEventListener("click", () => openTitle(button.dataset.title).catch(showError));
+      root.querySelectorAll("[data-title]").forEach(btn => {
+        btn.addEventListener("click", () => openTitle(btn.dataset.title).catch(showError));
       });
     }
 
-    function section(title, items, rail = true) {
+    function railSection(titleText, items) {
       if (!items || !items.length) return "";
       return `
-        <section class="section">
+        <div class="section">
           <div class="section-head">
-            <h2>${escapeHtml(title)}</h2>
-            <span class="muted">${items.length}</span>
+            <h2 class="section-title">${escapeHtml(titleText)}</h2>
+            <span class="section-count">${items.length}</span>
           </div>
-          <div class="${rail ? "rail" : "grid"}">${items.map(card).join("")}</div>
-        </section>`;
+          <div class="ornament">✦</div>
+          <div class="rail">${items.map(card).join("")}</div>
+        </div>`;
+    }
+
+    function gridSection(titleText, items) {
+      if (!items || !items.length) return "";
+      return `
+        <div class="section">
+          <div class="section-head">
+            <h2 class="section-title">${escapeHtml(titleText)}</h2>
+            <span class="section-count">${items.length}</span>
+          </div>
+          <div class="ornament">✦</div>
+          <div class="grid">${items.map(card).join("")}</div>
+        </div>`;
     }
 
     function spotlight(item) {
       if (!item) return "";
-      const title = item.display_title || item.title || "Novel";
-      const cover = coverOf(item);
+      const title   = item.display_title || item.title || "Novel";
+      const cover   = coverOf(item);
       const chapter = chapterNumberText(item.latest_chapter || item.chapter_number);
       return `
         <button class="spotlight" data-title="${escapeHtml(item.title_id)}">
-          ${cover ? `<img class="spotlight-bg" src="${escapeHtml(cover)}" alt="">` : `<div class="spotlight-fallback"></div>`}
+          ${cover
+            ? `<img class="spotlight-bg" src="${escapeHtml(cover)}" alt="">`
+            : `<div class="spotlight-fallback"></div>`}
+          <div class="spotlight-overlay"></div>
           <div class="spotlight-info">
-            <h1>${escapeHtml(title)}</h1>
-            <div class="chips">
-              ${chapter ? `<span class="chip">Cap. ${escapeHtml(chapter)}</span>` : ""}
-              <span class="chip">${escapeHtml(item.status || "Novel")}</span>
-              <span class="chip">Abrir obra</span>
+            <div class="spotlight-eyebrow">Destaque</div>
+            <h1 class="spotlight-title">${escapeHtml(title)}</h1>
+            <div class="spotlight-chips">
+              ${chapter ? `<span class="chip chip-purple">Cap. ${escapeHtml(chapter)}</span>` : ""}
+              <span class="chip chip-default">${escapeHtml(item.status || "Novel")}</span>
+              <span class="chip chip-gold">Abrir obra ›</span>
             </div>
           </div>
         </button>`;
     }
 
     async function renderHome() {
-      setRoute("home", "Inicio");
+      setRoute("home", "Início");
       setActiveTab("home");
       skeletonHome();
       const data = await api("/api/home?limit=18", { timeout: 22000 });
-      const latest = data.latest_titles || data.recent_titles || [];
+      const latest  = data.latest_titles || data.recent_titles || [];
       const catalog = data.featured || data.popular || [];
       const hero = latest[0] || catalog[0];
       view.innerHTML = [
         spotlight(hero),
-        section("Atualizadas agora", latest.slice(hero ? 1 : 0), true),
-        section("Catalogo", catalog, true),
-      ].join("") || empty("Nenhuma novel carregada agora.");
+        railSection("Atualizadas agora", latest.slice(hero ? 1 : 0)),
+        railSection("Catálogo", catalog),
+      ].join("") || emptyHtml("Nenhuma novel carregada agora.", "Tente atualizar.");
       bindCards();
     }
 
@@ -1045,7 +1415,7 @@
       return [...(chapters || [])].sort((a, b) => {
         const na = parseFloat(String(a.chapter_number || "").replace(",", "."));
         const nb = parseFloat(String(b.chapter_number || "").replace(",", "."));
-        if (!Number.isNaN(na) && !Number.isNaN(nb)) return nb - na;
+        if (!isNaN(na) && !isNaN(nb)) return nb - na;
         return String(b.chapter_number || "").localeCompare(String(a.chapter_number || ""));
       });
     }
@@ -1053,9 +1423,7 @@
     function latestChapter(title) {
       const latest = title.latest_chapter;
       if (latest && typeof latest === "object" && latest.chapter_id) return latest;
-      if (title.latest_chapter_id) {
-        return { chapter_id: title.latest_chapter_id, chapter_number: chapterNumberText(title.latest_chapter) };
-      }
+      if (title.latest_chapter_id) return { chapter_id: title.latest_chapter_id, chapter_number: chapterNumberText(title.latest_chapter) };
       const sorted = sortChapters(title.chapters || []);
       return sorted[0] || null;
     }
@@ -1077,68 +1445,71 @@
     }
 
     function renderTitle(title) {
-      const chapters = sortChapters(title.chapters || []);
-      const latest = latestChapter(title);
-      const first = firstChapter(title);
-      const lastRead = title.last_read;
-      const favs = storage.get(localFavoritesKey, {});
-      const isFav = Boolean(favs[title.title_id]);
-      const cover = coverOf(title);
+      const chapters  = sortChapters(title.chapters || []);
+      const latest    = latestChapter(title);
+      const first     = firstChapter(title);
+      const lastRead  = title.last_read;
+      const favs      = storage.get(localFavoritesKey, {});
+      const isFav     = Boolean(favs[title.title_id]);
+      const cover     = coverOf(title);
       const titleText = title.title || title.display_title || "Novel";
-      const safeCover = cover ? `url('${cover.replace(/'/g, "%27")}')` : "none";
 
       view.innerHTML = `
-        <section class="detail" style="--hero-image:${safeCover}">
+        <div class="detail">
           <div class="detail-hero">
-            ${cover ? `<img class="poster" src="${escapeHtml(cover)}" alt="">` : `<div class="poster cover-fallback">${escapeHtml(titleText)}</div>`}
+            <div class="detail-hero-blur" style="background-image:url('${escapeHtml(cover)}')"></div>
+            <div class="detail-hero-overlay"></div>
+            ${cover
+              ? `<img class="poster" src="${escapeHtml(cover)}" alt="">`
+              : `<div class="poster-fallback">${escapeHtml(titleText)}</div>`}
             <div class="detail-info">
               <h1 class="detail-title">${escapeHtml(titleText)}</h1>
-              <div class="chips">
-                <span class="chip">${escapeHtml(title.status || "Status")}</span>
-                <span class="chip">${escapeHtml(title.type || "Novel")}</span>
-                <span class="chip">${escapeHtml(title.total_chapters || chapters.length || "?")} caps</span>
+              <div class="detail-chips">
+                ${title.status ? `<span class="chip chip-default">${escapeHtml(title.status)}</span>` : ""}
+                ${title.type   ? `<span class="chip chip-purple">${escapeHtml(title.type)}</span>` : ""}
+                <span class="chip chip-gold">${escapeHtml(title.total_chapters || chapters.length || "?")} caps</span>
               </div>
               <div class="actions">
-                ${lastRead && lastRead.chapter_id ? `<button class="action hot" id="continueBtn">Continuar</button>` : ""}
-                ${latest && latest.chapter_id ? `<button class="action blue" id="latestBtn">Ultimo cap.</button>` : ""}
-                ${first && first.chapter_id ? `<button class="action" id="firstBtn">Comecar</button>` : ""}
-                <button class="action good" id="favBtn">${isFav ? "Favoritado" : "Favoritar"}</button>
+                ${lastRead && lastRead.chapter_id ? `<button class="action hot" id="continueBtn">▶ Continuar</button>` : ""}
+                ${latest && latest.chapter_id ? `<button class="action blue" id="latestBtn">↓ Último</button>` : ""}
+                ${first  && first.chapter_id  ? `<button class="action" id="firstBtn">⟩ Começar</button>` : ""}
+                <button class="action good" id="favBtn">${isFav ? "★ Salvo" : "☆ Favoritar"}</button>
               </div>
             </div>
           </div>
 
           <div class="synopsis-box">
-            <p class="synopsis collapsed" id="synopsis">${escapeHtml(title.description || "Sem sinopse disponivel.")}</p>
-            <button class="text-btn" id="synopsisBtn">Mostrar sinopse completa</button>
+            <div class="synopsis-label">Sinopse</div>
+            <p class="synopsis collapsed" id="synopsis">${escapeHtml(title.description || "Sem sinopse disponível.")}</p>
+            <button class="text-btn" id="synopsisBtn">Mostrar completa ↓</button>
           </div>
 
-          <section class="section">
-            <div class="section-head">
-              <h2>Capitulos</h2>
-              <span class="muted" id="chapterCount">${chapters.length}</span>
+          <div class="chapters-panel">
+            <div class="chapters-header">
+              <span class="chapters-title-row">Capítulos</span>
+              <span class="section-count" id="chapterCount">${chapters.length}</span>
             </div>
             <div class="chapter-tools">
-              <input id="chapterFilter" placeholder="Filtrar capitulo">
-              <button class="action" id="retryTitleBtn" title="Atualizar capitulos">↻</button>
+              <input id="chapterFilter" placeholder="Filtrar capítulo…">
+              <button class="action" id="retryTitleBtn" title="Atualizar">↻</button>
             </div>
             <div class="chapter-list" id="chapterList"></div>
-          </section>
-        </section>`;
+          </div>
+        </div>`;
 
       document.getElementById("continueBtn")?.addEventListener("click", () => openReader(lastRead.chapter_id, title.title_id).catch(showError));
-      document.getElementById("latestBtn")?.addEventListener("click", () => openReader(latest.chapter_id, title.title_id).catch(showError));
-      document.getElementById("firstBtn")?.addEventListener("click", () => openReader(first.chapter_id, title.title_id).catch(showError));
-      document.getElementById("favBtn")?.addEventListener("click", () => toggleFavorite(title).catch(showError));
+      document.getElementById("latestBtn")?.addEventListener("click",   () => openReader(latest.chapter_id,   title.title_id).catch(showError));
+      document.getElementById("firstBtn")?.addEventListener("click",    () => openReader(first.chapter_id,    title.title_id).catch(showError));
+      document.getElementById("favBtn")?.addEventListener("click",      () => toggleFavorite(title).catch(showError));
       document.getElementById("retryTitleBtn")?.addEventListener("click", async () => {
         await api("/api/refresh", { method: "POST" }).catch(() => null);
         await openTitle(title.title_id);
       });
       document.getElementById("synopsisBtn")?.addEventListener("click", () => {
-        const synopsis = document.getElementById("synopsis");
-        const collapsed = synopsis.classList.toggle("collapsed");
-        document.getElementById("synopsisBtn").textContent = collapsed ? "Mostrar sinopse completa" : "Recolher sinopse";
+        const el = document.getElementById("synopsis");
+        const collapsed = el.classList.toggle("collapsed");
+        document.getElementById("synopsisBtn").textContent = collapsed ? "Mostrar completa ↓" : "Recolher ↑";
       });
-
       const filter = document.getElementById("chapterFilter");
       filter.addEventListener("input", () => renderChapterList(chapters, filter.value, title.title_id));
       renderChapterList(chapters, "", title.title_id);
@@ -1148,31 +1519,32 @@
       const list = document.getElementById("chapterList");
       if (!list) return;
       const q = String(query || "").trim().toLowerCase();
-      const filtered = chapters.filter(chapter => {
-        const text = `${chapter.chapter_number || ""} ${chapter.chapter_title || ""}`.toLowerCase();
+      const filtered = chapters.filter(ch => {
+        const text = `${ch.chapter_number || ""} ${ch.chapter_title || ""}`.toLowerCase();
         return !q || text.includes(q);
       });
       document.getElementById("chapterCount").textContent = filtered.length;
       if (!filtered.length) {
-        list.innerHTML = empty("Nenhum capitulo carregado. Toque em atualizar.");
+        list.innerHTML = emptyHtml("Nenhum capítulo encontrado.", "Tente outro filtro ou atualize.");
         return;
       }
-      list.innerHTML = filtered.map((chapter, index) => `
-        <button class="chapter-row" data-chapter="${escapeHtml(chapter.chapter_id)}" style="animation-delay:${Math.min(index * 18, 220)}ms">
-          <div>
-            <strong>Capitulo ${escapeHtml(chapter.chapter_number || "?")}</strong>
-            <span>${escapeHtml(chapter.chapter_title || "Ler agora")}</span>
+      list.innerHTML = filtered.map((ch, i) => `
+        <button class="chapter-row" data-chapter="${escapeHtml(ch.chapter_id)}" style="animation-delay:${Math.min(i*14,200)}ms">
+          <div class="chapter-num">${escapeHtml(String(ch.chapter_number || "?").replace(/\..*/,""))}</div>
+          <div class="chapter-info">
+            <strong>Capítulo ${escapeHtml(ch.chapter_number || "?")}</strong>
+            <span>${escapeHtml(ch.chapter_title || "Ler agora")}</span>
           </div>
-          <div class="arrow">›</div>
+          <div class="chapter-arrow">›</div>
         </button>
       `).join("");
-      list.querySelectorAll("[data-chapter]").forEach(button => {
-        button.addEventListener("click", () => openReader(button.dataset.chapter, titleId).catch(showError));
+      list.querySelectorAll("[data-chapter]").forEach(btn => {
+        btn.addEventListener("click", () => openReader(btn.dataset.chapter, titleId).catch(showError));
       });
     }
 
     async function toggleFavorite(title) {
-      const favs = storage.get(localFavoritesKey, {});
+      const favs   = storage.get(localFavoritesKey, {});
       const exists = Boolean(favs[title.title_id]);
       if (exists) {
         delete favs[title.title_id];
@@ -1200,28 +1572,24 @@
     }
 
     function chunkParagraphs(paragraphs) {
-      const clean = (paragraphs || []).map(item => String(item || "").trim()).filter(Boolean);
+      const clean = (paragraphs || []).map(p => String(p || "").trim()).filter(Boolean);
       const pages = [];
-      let bucket = [];
-      let chars = 0;
-      for (const paragraph of clean) {
-        if (bucket.length && (bucket.length >= 5 || chars + paragraph.length > 2300)) {
-          pages.push(bucket);
-          bucket = [];
-          chars = 0;
+      let bucket = [], chars = 0;
+      for (const p of clean) {
+        if (bucket.length && (bucket.length >= 5 || chars + p.length > 2300)) {
+          pages.push(bucket); bucket = []; chars = 0;
         }
-        bucket.push(paragraph);
-        chars += paragraph.length;
+        bucket.push(p); chars += p.length;
       }
       if (bucket.length) pages.push(bucket);
-      return pages.length ? pages : [["Nao consegui carregar o texto deste capitulo agora. Tente atualizar ou abrir outro capitulo."]];
+      return pages.length ? pages : [["Não consegui carregar o texto deste capítulo agora. Tente atualizar ou abrir outro capítulo."]];
     }
 
     async function openReader(chapterId, titleId = "") {
       if (!chapterId) return;
       setRoute("reader", "Leitor");
       setActiveTab("");
-      setLoading("Abrindo capitulo");
+      setLoading("Abrindo capítulo");
       state.chapterId = chapterId;
       state.titleId = titleId || state.titleId;
       const chapter = await api(`/api/chapter/${encodeURIComponent(chapterId)}`, { timeout: 26000 });
@@ -1229,7 +1597,7 @@
       state.titleId = chapter.title_id || state.titleId;
       state.currentPages = chunkParagraphs(chapter.paragraphs || []);
 
-      const localProgress = storage.get(localProgressKey, {});
+      const localProgress  = storage.get(localProgressKey, {});
       const remoteProgress = userId !== "guest" && state.titleId
         ? await api(`/api/progress?user_id=${encodeURIComponent(userId)}&title_id=${encodeURIComponent(state.titleId)}`).catch(() => ({}))
         : {};
@@ -1241,47 +1609,46 @@
     }
 
     function renderReader() {
-      const chapter = state.currentChapter;
-      const page = state.currentPages[state.currentPage - 1] || [];
+      const chapter  = state.currentChapter;
+      const page     = state.currentPages[state.currentPage - 1] || [];
       const progress = Math.round((state.currentPage / Math.max(1, state.currentPages.length)) * 100);
       document.documentElement.style.setProperty("--reader-font", `${state.readerFont}px`);
       view.innerHTML = `
-        <section class="reader">
+        <div class="reader">
           <div class="reader-head">
+            <div class="reader-eyebrow">Lendo agora</div>
             <div class="reader-title">${escapeHtml(chapter.title || "Novel")}</div>
             <div class="reader-meta">
               <span>Cap. ${escapeHtml(chapter.chapter_number || "?")}</span>
-              <span>${state.currentPage}/${state.currentPages.length}</span>
+              <span>${state.currentPage} / ${state.currentPages.length}</span>
             </div>
-            <div class="progress" style="--progress:${progress}%"><span></span></div>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width:${progress}%"></div>
+            </div>
             <div class="reader-tools">
-              <button class="tool" id="fontDown">A-</button>
+              <button class="tool" id="fontDown">A−</button>
               <button class="tool" id="fontUp">A+</button>
-              <button class="tool" id="themeToggle">${state.readerDark ? "☾" : "☼"}</button>
+              <button class="tool" id="themeToggle">${state.readerDark ? "☼" : "☾"}</button>
             </div>
           </div>
+
           <article class="reader-page ${state.readerDark ? "dark" : ""}">
-            ${page.map(paragraph => `<p>${escapeHtml(paragraph)}</p>`).join("")}
+            ${page.map(p => `<p>${escapeHtml(p)}</p>`).join("")}
           </article>
+
           <div class="reader-controls">
-            <button class="action" id="prevPage" ${state.currentPage <= 1 ? "disabled" : ""}>Anterior</button>
-            <span class="muted">${progress}%</span>
-            <button class="action hot" id="nextPage">${state.currentPage >= state.currentPages.length ? "Proximo cap." : "Proxima"}</button>
+            <button class="action" id="prevPage" ${state.currentPage <= 1 ? "disabled" : ""}>‹ Anterior</button>
+            <span class="reader-pct">${progress}%</span>
+            <button class="action hot" id="nextPage">${state.currentPage >= state.currentPages.length ? "Próx. cap. ›" : "Próxima ›"}</button>
           </div>
-        </section>`;
+        </div>`;
 
       document.getElementById("prevPage").addEventListener("click", () => {
-        if (state.currentPage > 1) {
-          state.currentPage -= 1;
-          renderReader();
-          window.scrollTo({ top: 0, behavior: "smooth" });
-        }
+        if (state.currentPage > 1) { state.currentPage--; renderReader(); window.scrollTo({ top: 0, behavior: "smooth" }); }
       });
       document.getElementById("nextPage").addEventListener("click", () => {
         if (state.currentPage < state.currentPages.length) {
-          state.currentPage += 1;
-          renderReader();
-          window.scrollTo({ top: 0, behavior: "smooth" });
+          state.currentPage++; renderReader(); window.scrollTo({ top: 0, behavior: "smooth" });
         } else if (chapter.next_chapter && chapter.next_chapter.chapter_id) {
           openReader(chapter.next_chapter.chapter_id, chapter.title_id).catch(showError);
         }
@@ -1292,7 +1659,7 @@
         renderReader();
       });
       document.getElementById("fontUp").addEventListener("click", () => {
-        state.readerFont = Math.min(24, state.readerFont + 1);
+        state.readerFont = Math.min(26, state.readerFont + 1);
         localStorage.setItem("novel_reader_font", String(state.readerFont));
         renderReader();
       });
@@ -1332,12 +1699,22 @@
       setActiveTab("");
       setLoading("Buscando");
       const data = await api(`/api/search?q=${encodeURIComponent(query)}&limit=30`, { timeout: 22000 });
-      view.innerHTML = section(`Busca: ${query}`, data.results || [], false) || empty("Nada encontrado.");
+      const results = data.results || [];
+      view.innerHTML = results.length
+        ? `<div class="section">
+            <div class="section-head">
+              <h2 class="section-title">Busca: ${escapeHtml(query)}</h2>
+              <span class="section-count">${results.length}</span>
+            </div>
+            <div class="ornament">✦</div>
+            <div class="grid">${results.map(card).join("")}</div>
+          </div>`
+        : emptyHtml("Nada encontrado.", `Não há resultados para "${query}".`);
       bindCards();
     }
 
     async function renderHistory() {
-      setRoute("history", "Historico");
+      setRoute("history", "Histórico");
       setActiveTab("history");
       const localProgress = storage.get(localProgressKey, {});
       let items = Object.values(localProgress).sort((a, b) => Number(b.updated_at || 0) - Number(a.updated_at || 0));
@@ -1345,23 +1722,36 @@
         const remote = await api(`/api/history?user_id=${encodeURIComponent(userId)}&limit=120`, { timeout: 12000 }).catch(() => null);
         if (remote && remote.items && remote.items.length) items = remote.items;
       }
+      if (!items.length) {
+        view.innerHTML = emptyHtml("Seu histórico está vazio.", "Comece a ler uma novel para ver o progresso aqui.");
+        return;
+      }
       view.innerHTML = `
-        <section class="section">
-          <div class="section-head"><h2>Historico</h2><span class="muted">${items.length}</span></div>
-          <div class="chapter-list">
-            ${items.map((item, index) => `
-              <button class="chapter-row" data-history-chapter="${escapeHtml(item.chapter_id)}" data-history-title="${escapeHtml(item.title_id)}" style="animation-delay:${Math.min(index * 18, 220)}ms">
-                <div>
-                  <strong>${escapeHtml(item.title_name || "Novel")}</strong>
-                  <span>Cap. ${escapeHtml(item.chapter_number || "?")} · pagina ${escapeHtml(item.page_index || 1)}/${escapeHtml(item.total_pages || 1)}</span>
-                </div>
-                <div class="arrow">›</div>
-              </button>
-            `).join("") || empty("Seu historico vai aparecer aqui.")}
+        <div class="section">
+          <div class="section-head">
+            <h2 class="section-title">Histórico</h2>
+            <span class="section-count">${items.length}</span>
           </div>
-        </section>`;
-      view.querySelectorAll("[data-history-chapter]").forEach(button => {
-        button.addEventListener("click", () => openReader(button.dataset.historyChapter, button.dataset.historyTitle).catch(showError));
+          <div class="ornament">✦</div>
+          <div class="chapters-panel">
+            <div class="chapter-list">
+              ${items.map((item, i) => `
+                <button class="history-row" data-history-chapter="${escapeHtml(item.chapter_id)}" data-history-title="${escapeHtml(item.title_id)}" style="animation-delay:${Math.min(i*14,200)}ms">
+                  ${item.cover_url
+                    ? `<img class="history-thumb" src="${escapeHtml(item.cover_url)}" alt="" loading="lazy">`
+                    : `<div class="history-thumb-fallback">📖</div>`}
+                  <div>
+                    <strong style="display:block;font-size:14px;font-weight:600;color:var(--soft)">${escapeHtml(item.title_name || "Novel")}</strong>
+                    <span style="display:block;font-size:12px;color:var(--muted);margin-top:3px">Cap. ${escapeHtml(item.chapter_number || "?")} · p. ${escapeHtml(item.page_index || 1)}/${escapeHtml(item.total_pages || 1)}</span>
+                  </div>
+                  <div class="chapter-arrow">›</div>
+                </button>
+              `).join("")}
+            </div>
+          </div>
+        </div>`;
+      view.querySelectorAll("[data-history-chapter]").forEach(btn => {
+        btn.addEventListener("click", () => openReader(btn.dataset.historyChapter, btn.dataset.historyTitle).catch(showError));
       });
     }
 
@@ -1373,7 +1763,16 @@
         const remote = await api(`/api/favorites?user_id=${encodeURIComponent(userId)}`, { timeout: 12000 }).catch(() => null);
         if (remote && remote.items) favs = remote.items;
       }
-      view.innerHTML = section("Favoritos", favs, false) || empty("Nenhum favorito ainda.");
+      view.innerHTML = favs.length
+        ? `<div class="section">
+            <div class="section-head">
+              <h2 class="section-title">Favoritos</h2>
+              <span class="section-count">${favs.length}</span>
+            </div>
+            <div class="ornament">✦</div>
+            <div class="grid">${favs.map(card).join("")}</div>
+          </div>`
+        : emptyHtml("Nenhum favorito ainda.", "Marque novels como favoritas para vê-las aqui.");
       bindCards();
     }
 
@@ -1381,12 +1780,12 @@
       setRoute("profile", "Perfil");
       setActiveTab("profile");
       const localProgress = storage.get(localProgressKey, {});
-      const localFavs = storage.get(localFavoritesKey, {});
+      const localFavs     = storage.get(localFavoritesKey, {});
       let stats = {
         favorites_count: Object.keys(localFavs).length,
         chapters_read: Object.values(localProgress).length,
         titles_opened: Object.keys(localProgress).length,
-        pages_read: Object.values(localProgress).reduce((sum, item) => sum + Number(item.page_index || 1), 0),
+        pages_read: Object.values(localProgress).reduce((sum, it) => sum + Number(it.page_index || 1), 0),
         offline_access: {}
       };
       if (userId !== "guest") {
@@ -1394,24 +1793,33 @@
       }
       const access = stats.offline_access || {};
       view.innerHTML = `
-        <section class="section">
-          <div class="section-head"><h2>Seu perfil</h2><span class="muted">ID ${escapeHtml(userId)}</span></div>
-          <div class="stats">
-            <div class="stat"><strong>${escapeHtml(stats.favorites_count || 0)}</strong><span>Favoritos</span></div>
-            <div class="stat"><strong>${escapeHtml(stats.chapters_read || 0)}</strong><span>Caps lidos</span></div>
-            <div class="stat"><strong>${escapeHtml(stats.titles_opened || 0)}</strong><span>Obras abertas</span></div>
-            <div class="stat"><strong>${escapeHtml(stats.pages_read || 0)}</strong><span>Paginas lidas</span></div>
+        <div class="section">
+          <div class="section-head">
+            <h2 class="section-title">Perfil</h2>
+            <span class="section-count">ID ${escapeHtml(userId)}</span>
           </div>
-        </section>
-        <section class="section">
-          <button class="chapter-row">
-            <div>
-              <strong>Offline</strong>
-              <span>${access.is_active ? "PDF e EPUB liberados" : "sem plano ativo"}</span>
+          <div class="ornament">✦</div>
+          <div class="stats">
+            <div class="stat"><span class="stat-value">${escapeHtml(stats.favorites_count || 0)}</span><span class="stat-label">Favoritos</span></div>
+            <div class="stat"><span class="stat-value">${escapeHtml(stats.chapters_read  || 0)}</span><span class="stat-label">Caps lidos</span></div>
+            <div class="stat"><span class="stat-value">${escapeHtml(stats.titles_opened  || 0)}</span><span class="stat-label">Obras abertas</span></div>
+            <div class="stat"><span class="stat-value">${escapeHtml(stats.pages_read     || 0)}</span><span class="stat-label">Páginas lidas</span></div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="chapters-panel">
+            <div class="chapter-list">
+              <div class="chapter-row" style="cursor:default">
+                <div class="chapter-num">${access.is_active ? "✓" : "!"}</div>
+                <div class="chapter-info">
+                  <strong>Leitura Offline</strong>
+                  <span>${access.is_active ? "PDF e EPUB liberados" : "Sem plano ativo"}</span>
+                </div>
+                <div class="chapter-arrow" style="color:${access.is_active ? "var(--teal)" : "var(--muted)"}">●</div>
+              </div>
             </div>
-            <div class="arrow">${access.is_active ? "✓" : "!"}</div>
-          </button>
-        </section>`;
+          </div>
+        </div>`;
     }
 
     function setActiveTab(tab) {
@@ -1422,26 +1830,31 @@
 
     function showError(error) {
       setRoute(state.route === "reader" ? "reader" : state.route, subtitle.textContent);
-      view.innerHTML = empty(error.message || "Nao consegui carregar agora.", `<br><br><button class="action hot" id="retryBtn">Tentar de novo</button>`);
+      view.innerHTML = `
+        <div class="error-box">
+          <span class="empty-icon">⚡</span>
+          <div class="empty-text">${escapeHtml(error.message || "Não consegui carregar agora.")}</div>
+          <button class="retry-btn" id="retryBtn">↻ Tentar de novo</button>
+        </div>`;
       document.getElementById("retryBtn")?.addEventListener("click", () => boot(true).catch(showError));
     }
 
     async function syncLocal() {
       if (userId === "guest") return;
-      const progress = Object.values(storage.get(localProgressKey, {}));
+      const progress  = Object.values(storage.get(localProgressKey, {}));
       const favorites = Object.values(storage.get(localFavoritesKey, {}));
       if (progress.length) {
-        await api("/api/progress/sync", { method: "POST", body: JSON.stringify({ user_id: userId, progress }), timeout: 9000 }).catch(() => null);
+        await api("/api/progress/sync",  { method: "POST", body: JSON.stringify({ user_id: userId, progress }),  timeout: 9000 }).catch(() => null);
       }
       if (favorites.length) {
         await api("/api/favorites/sync", { method: "POST", body: JSON.stringify({ user_id: userId, favorites }), timeout: 9000 }).catch(() => null);
       }
     }
 
-    searchForm.addEventListener("submit", event => {
-      event.preventDefault();
-      const query = searchInput.value.trim();
-      if (query.length >= 2) renderSearch(query).catch(showError);
+    searchForm.addEventListener("submit", e => {
+      e.preventDefault();
+      const q = searchInput.value.trim();
+      if (q.length >= 2) renderSearch(q).catch(showError);
     });
 
     backBtn.addEventListener("click", () => {
@@ -1455,13 +1868,13 @@
       boot(true).catch(showError);
     });
 
-    document.querySelectorAll(".tab-btn").forEach(button => {
-      button.addEventListener("click", () => {
-        const tab = button.dataset.tab;
-        if (tab === "home") renderHome().catch(showError);
-        if (tab === "history") renderHistory().catch(showError);
+    document.querySelectorAll(".tab-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const tab = btn.dataset.tab;
+        if (tab === "home")      renderHome().catch(showError);
+        if (tab === "history")   renderHistory().catch(showError);
         if (tab === "favorites") renderFavorites().catch(showError);
-        if (tab === "profile") renderProfile().catch(showError);
+        if (tab === "profile")   renderProfile().catch(showError);
       });
     });
 
