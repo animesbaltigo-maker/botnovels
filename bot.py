@@ -23,14 +23,17 @@ from handlers.metricas import metricas, metricas_limpar
 from handlers.novel import novel_command
 from handlers.novel_callbacks import callbacks
 from handlers.novel_updates import auto_post_new_novel_caps_job, postnovelcaps
+from handlers.plan import plano
 from handlers.postnovel import postnovel, posttodasnovels
 from handlers.referral import indicacoes, referral_button
 from handlers.start import start
 from services.centralnovel_client import warm_catalog_cache
 from services.metrics import init_metrics_db
+from services.offline_access import init_offline_access_db
 from services.referral_db import init_referral_db
 
 init_metrics_db()
+init_offline_access_db()
 init_referral_db()
 
 MAX_CONCURRENT_UPDATES = 96
@@ -122,6 +125,8 @@ def main() -> None:
     app.add_handler(CommandHandler("postnovosepsnovel", postnovelcaps))
     app.add_handler(CommandHandler("broadcast", broadcast_command))
     app.add_handler(CommandHandler("indicacoes", indicacoes))
+    app.add_handler(CommandHandler("plano", plano))
+    app.add_handler(CommandHandler("plan", plano))
     app.add_handler(CommandHandler("metricas", metricas))
     app.add_handler(CommandHandler("metricaslimpar", metricas_limpar))
 
