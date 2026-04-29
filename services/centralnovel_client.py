@@ -120,11 +120,13 @@ def _key_from_value(value: str) -> str:
 
 
 def _series_key(url: str) -> str:
-    return _key_from_value(_absolute_url(url))
+    slug = _series_slug(url)
+    return slug or _key_from_value(_absolute_url(url))
 
 
 def _chapter_key(url: str) -> str:
-    return _key_from_value(_absolute_url(url))
+    slug = _chapter_slug(url)
+    return slug or _key_from_value(_absolute_url(url))
 
 
 def _remember_series(url: str) -> str:
@@ -132,6 +134,8 @@ def _remember_series(url: str) -> str:
     key = _series_key(absolute)
     if absolute:
         _SERIES_REF_INDEX[key] = absolute
+        legacy_key = _key_from_value(absolute)
+        _SERIES_REF_INDEX[legacy_key] = absolute
     return key
 
 
@@ -140,8 +144,11 @@ def _remember_chapter(url: str, series_id: str = "") -> str:
     key = _chapter_key(absolute)
     if absolute:
         _CHAPTER_REF_INDEX[key] = absolute
+        legacy_key = _key_from_value(absolute)
+        _CHAPTER_REF_INDEX[legacy_key] = absolute
     if series_id:
         _CHAPTER_TO_SERIES[key] = series_id
+        _CHAPTER_TO_SERIES[_key_from_value(absolute)] = series_id
     return key
 
 
@@ -471,6 +478,8 @@ def _extract_description(lines: list[str]) -> str:
                 "anterior",
                 "indice",
                 "proximo",
+                "capitulos",
+                "capítulos",
             }:
                 break
             if any(
@@ -483,13 +492,20 @@ def _extract_description(lines: list[str]) -> str:
                     "atualizado em",
                     "postado em",
                     "generos",
+                    "download pack",
+                    "ultima leitura",
+                    "última leitura",
+                    "capitulos",
+                    "capítulos",
                 )
             ):
+                break
+            if "{{" in current or "}}" in current:
                 break
             if "capitulo" in normalized and len(normalized.split()) <= 5:
                 break
             collected.append(current)
-            if len(" ".join(collected)) >= 1600:
+            if len(" ".join(collected)) >= 850:
                 break
         return " ".join(collected).strip()
     return ""
@@ -556,13 +572,12 @@ def _extract_genres(soup: BeautifulSoup, lines: list[str]) -> list[str]:
 
 def _parse_chapter_anchors(soup: BeautifulSoup, series_id: str, series_url: str) -> list[dict[str, Any]]:
     seen: set[str] = set()
-    chapters: list[dict[str, Any]] = []
+    strict_chapters: list[dict[str, Any]] = []
+    loose_chapters: list[dict[str, Any]] = []
 
     for anchor in soup.find_all("a", href=True):
         href = _absolute_url(anchor.get("href"))
         if not _chapter_href_matches(href):
-            continue
-        if not _chapter_belongs_to_series(href, series_url):
             continue
         if href in seen:
             continue
@@ -577,16 +592,18 @@ def _parse_chapter_anchors(soup: BeautifulSoup, series_id: str, series_url: str)
         chapter_number = _clean(match.group(1).replace("-", ".")) if match else ""
 
         chapter_id = _remember_chapter(href, series_id)
-        chapters.append(
-            {
-                "chapter_id": chapter_id,
-                "chapter_url": href,
-                "chapter_number": chapter_number,
-                "title": text,
-            }
-        )
+        item = {
+            "chapter_id": chapter_id,
+            "chapter_url": href,
+            "chapter_number": chapter_number,
+            "title": text,
+        }
+        loose_chapters.append(item)
+        if _chapter_belongs_to_series(href, series_url):
+            strict_chapters.append(item)
         seen.add(href)
 
+    chapters = strict_chapters or loose_chapters
     chapters.sort(
         key=lambda item: (
             _decimal_sort_value(item.get("chapter_number")),
