@@ -1,11 +1,12 @@
 import asyncio
 import html
 import time
+from urllib.parse import urlencode
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto, Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto, Update, WebAppInfo
 from telegram.ext import ContextTypes
 
-from config import CHAPTERS_PER_PAGE, PROMO_BANNER_URL
+from config import BOT_BRAND, CHAPTERS_PER_PAGE, DISTRIBUTION_TAG, PROMO_BANNER_URL, WEBAPP_BASE_URL
 from core.background import fire_and_forget, fire_and_forget_sync, run_sync
 from core.pdf_queue import EpubJob, PdfJob, enqueue_epub_job, enqueue_pdf_job
 from handlers.novel import edit_search_page, render_search_page
@@ -23,15 +24,64 @@ from services.metrics import (
     log_event,
     mark_chapter_read,
 )
+from services.cakto_gateway import get_checkout_options
+from services.offline_access import is_offline_user_allowed
 from services.telegraph_service import get_cached_chapter_page_url, get_or_create_chapter_page
 
 CALLBACK_COOLDOWN = 0.8
 TELEGRAPH_INLINE_WAIT = 1.4
+SUPPORT_BOT_URL = "https://t.me/QGSuporteBot"
 
 _USER_CALLBACK_LOCKS: dict[int, asyncio.Lock] = {}
 _MESSAGE_EDIT_LOCKS: dict[str, asyncio.Lock] = {}
 _MESSAGE_INFLIGHT_ACTIONS: dict[str, str] = {}
 _MESSAGE_PANEL_STATE: dict[str, tuple[str, str]] = {}
+
+
+def _miniapp_url(
+    *,
+    title_id: str = "",
+    chapter_id: str = "",
+    route: str = "",
+    page: str = "",
+    source: str = "bot",
+) -> str:
+    if not WEBAPP_BASE_URL:
+        return ""
+
+    params: dict[str, str] = {"source": source}
+    if title_id:
+        tid = str(title_id).strip()
+        params["title_id"] = tid
+        params["novel_id"] = tid
+        params["id"] = tid
+    if chapter_id:
+        cid = str(chapter_id).strip()
+        params["chapter_id"] = cid
+        params["read"] = cid
+        params["cap"] = cid
+    if page:
+        params["page"] = str(page).strip()
+
+    resolved_route = route.strip() if route else ""
+    if not resolved_route:
+        if chapter_id:
+            resolved_route = "reader"
+        elif title_id and page == "chapters":
+            resolved_route = "chapters"
+        elif title_id:
+            resolved_route = "detail"
+        else:
+            resolved_route = "home"
+    params["route"] = resolved_route
+    return f"{WEBAPP_BASE_URL}/miniapp/index.html?{urlencode(params)}"
+
+
+def _reader_button(label: str, *, title_id: str = "", chapter_id: str = "", route: str = "", page: str = "", fallback: str = ""):
+    url = _miniapp_url(title_id=title_id, chapter_id=chapter_id, route=route, page=page)
+    if url:
+        return InlineKeyboardButton(label, web_app=WebAppInfo(url=url))
+    return InlineKeyboardButton(label, callback_data=fallback or "nv|noop")
 
 
 def _now() -> float:
@@ -180,21 +230,52 @@ def _title_keyboard(bundle: dict, last_read: dict | None = None) -> InlineKeyboa
     primary_row: list[InlineKeyboardButton] = []
     if last_read and last_read.get("chapter_id"):
         primary_row.append(
-            InlineKeyboardButton("⏱ Continuar", callback_data=f"nv|read|{last_read['chapter_id']}|{title_id}")
+            _reader_button(
+                "⏱ Continuar",
+                title_id=title_id,
+                chapter_id=last_read["chapter_id"],
+                route="reader",
+                fallback=f"nv|read|{last_read['chapter_id']}|{title_id}",
+            )
         )
     if first_chapter.get("chapter_id"):
         primary_row.append(
-            InlineKeyboardButton("📖 Comecar", callback_data=f"nv|read|{first_chapter['chapter_id']}|{title_id}")
+            _reader_button(
+                "📖 Comecar",
+                title_id=title_id,
+                chapter_id=first_chapter["chapter_id"],
+                route="reader",
+                fallback=f"nv|read|{first_chapter['chapter_id']}|{title_id}",
+            )
         )
     if primary_row:
         rows.append(primary_row[:2])
 
     if latest_chapter.get("chapter_id") and latest_chapter.get("chapter_id") != first_chapter.get("chapter_id"):
         rows.append(
-            [InlineKeyboardButton("🆕 Ultimo capitulo", callback_data=f"nv|read|{latest_chapter['chapter_id']}|{title_id}")]
+            [
+                _reader_button(
+                    "🆕 Ultimo capitulo",
+                    title_id=title_id,
+                    chapter_id=latest_chapter["chapter_id"],
+                    route="reader",
+                    fallback=f"nv|read|{latest_chapter['chapter_id']}|{title_id}",
+                )
+            ]
         )
 
-    rows.append([InlineKeyboardButton("📚 Lista de capitulos", callback_data=f"nv|chap|{title_id}|1")])
+    rows.append(
+        [
+            _reader_button(
+                "📚 Lista de capitulos",
+                title_id=title_id,
+                route="detail",
+                page="chapters",
+                fallback=f"nv|chap|{title_id}|1",
+            )
+        ]
+    )
+    rows.append([InlineKeyboardButton("📥 PDF / EPUB offline", callback_data=f"nv|offline|{title_id}")])
     return InlineKeyboardMarkup(rows)
 
 
@@ -269,7 +350,10 @@ def _chapter_text(chapter: dict, bundle: dict | None = None) -> str:
     if chapter_title and chapter_title.lower() != title.lower():
         lines.append(f"» <b>Titulo:</b> <i>{chapter_title}</i>")
 
-    lines.extend(["", "✨ <i>O Telegraph ja esta sendo preparado para leitura rapida.</i>"])
+    if WEBAPP_BASE_URL:
+        lines.extend(["", "✨ <i>Abra o WebApp para ler com progresso sincronizado.</i>"])
+    else:
+        lines.extend(["", "✨ <i>O Telegraph ja esta sendo preparado para leitura rapida.</i>"])
     return "\n".join(lines)
 
 
@@ -277,7 +361,19 @@ def _chapter_keyboard(chapter: dict, telegraph_url: str = "", *, telegraph_pendi
     title_id = chapter.get("title_id") or ""
     rows: list[list[InlineKeyboardButton]] = []
 
-    if telegraph_url:
+    if WEBAPP_BASE_URL:
+        rows.append(
+            [
+                _reader_button(
+                    "📖 Ler no WebApp",
+                    title_id=title_id,
+                    chapter_id=chapter["chapter_id"],
+                    route="reader",
+                    fallback=f"nv|read|{chapter['chapter_id']}|{title_id}",
+                )
+            ]
+        )
+    elif telegraph_url:
         rows.append([InlineKeyboardButton("📖 Abrir no Telegraph", url=telegraph_url)])
     elif telegraph_pending:
         rows.append([InlineKeyboardButton("⏳ Preparando Telegraph", callback_data="nv|noop")])
@@ -286,30 +382,172 @@ def _chapter_keyboard(chapter: dict, telegraph_url: str = "", *, telegraph_pendi
 
     rows.append(
         [
-            InlineKeyboardButton("📄 Baixar PDF", callback_data=f"nv|pdf|{chapter['chapter_id']}|{title_id}"),
-            InlineKeyboardButton("📚 Baixar EPUB", callback_data=f"nv|epub|{chapter['chapter_id']}|{title_id}"),
+            InlineKeyboardButton("📄 PDF pago", callback_data=f"nv|pdf|{chapter['chapter_id']}|{title_id}"),
+            InlineKeyboardButton("📚 EPUB pago", callback_data=f"nv|epub|{chapter['chapter_id']}|{title_id}"),
         ]
     )
 
     nav: list[InlineKeyboardButton] = []
     if chapter.get("previous_chapter"):
         nav.append(
+            _reader_button(
+                "⬅️ Anterior",
+                title_id=title_id,
+                chapter_id=chapter["previous_chapter"]["chapter_id"],
+                route="reader",
+                fallback=f"nv|read|{chapter['previous_chapter']['chapter_id']}|{title_id}",
+            )
+        )
+    if chapter.get("next_chapter"):
+        nav.append(
+            _reader_button(
+                "Proximo ➡️",
+                title_id=title_id,
+                chapter_id=chapter["next_chapter"]["chapter_id"],
+                route="reader",
+                fallback=f"nv|read|{chapter['next_chapter']['chapter_id']}|{title_id}",
+            )
+        )
+    if nav:
+        rows.append(nav)
+
+    rows.append(
+        [
+            _reader_button(
+                "📚 Ver capitulos",
+                title_id=title_id,
+                route="detail",
+                page="chapters",
+                fallback=f"nv|chap|{title_id}|1",
+            )
+        ]
+    )
+    return InlineKeyboardMarkup(rows)
+
+
+def _download_label(item: dict) -> str:
+    number = str(item.get("chapter_number") or "?").strip()
+    lowered = number.lower()
+    for prefix in ("capitulo", "capítulo", "cap.", "ch.", "ch"):
+        if lowered.startswith(prefix):
+            number = number[len(prefix):].strip(" .:-")
+            break
+    return number or "?"
+
+
+def _offline_locked_text(bundle: dict) -> str:
+    title = html.escape(bundle.get("title") or "Novel")
+    brand = html.escape(BOT_BRAND or "Novels Baltigo")
+    return (
+        f"🔒 <b>PDF e EPUB exclusivos para assinantes do {brand}</b>\n\n"
+        f"» <b>Obra:</b> <i>{title}</i>\n\n"
+        "A leitura pelo WebApp continua normal. Para baixar capitulos em PDF ou EPUB, "
+        "ative um plano abaixo. Quando a Cakto aprovar, o bot libera seu ID automaticamente."
+    )
+
+
+def _offline_locked_keyboard(bundle: dict, user_id: int | None) -> InlineKeyboardMarkup:
+    rows = [[InlineKeyboardButton(option["label"], url=option["url"])] for option in get_checkout_options(user_id)]
+    title_id = str(bundle.get("title_id") or "").strip()
+    if title_id:
+        rows.append([InlineKeyboardButton("🔄 Verificar depois", callback_data=f"nv|offline|{title_id}")])
+        rows.append([InlineKeyboardButton("🔙 Voltar para a obra", callback_data=f"nv|title|{title_id}")])
+    rows.append([InlineKeyboardButton("Suporte", url=SUPPORT_BOT_URL)])
+    return InlineKeyboardMarkup(rows)
+
+
+def _offline_chapters_text(bundle: dict, page: int, total_items: int) -> str:
+    total_pages = max(1, ((total_items - 1) // CHAPTERS_PER_PAGE) + 1)
+    return (
+        f"📥 <b>PDF / EPUB offline</b>\n\n"
+        f"» <b>Obra:</b> <i>{html.escape(bundle.get('title') or 'Novel')}</i>\n"
+        f"» <b>Pagina:</b> <i>{page}/{total_pages}</i>\n"
+        f"» <b>Capitulos:</b> <i>{total_items}</i>\n\n"
+        "Escolha um capitulo para baixar."
+    )
+
+
+def _offline_chapters_keyboard(bundle: dict, chapters: list[dict], page: int) -> InlineKeyboardMarkup:
+    rows: list[list[InlineKeyboardButton]] = []
+    title_id = str(bundle.get("title_id") or "").strip()
+    total_items = len(chapters)
+    total_pages = max(1, ((total_items - 1) // CHAPTERS_PER_PAGE) + 1)
+    page = max(1, min(page, total_pages))
+    start = (page - 1) * CHAPTERS_PER_PAGE
+    end = min(start + CHAPTERS_PER_PAGE, total_items)
+
+    line: list[InlineKeyboardButton] = []
+    for item in chapters[start:end]:
+        chapter_id = str(item.get("chapter_id") or "").strip()
+        if not chapter_id:
+            continue
+        line.append(
+            InlineKeyboardButton(
+                _download_label(item),
+                callback_data=f"nv|offread|{chapter_id}|{title_id}|{page}",
+            )
+        )
+        if len(line) == 3:
+            rows.append(line)
+            line = []
+    if line:
+        rows.append(line)
+
+    nav: list[InlineKeyboardButton] = []
+    if page > 1:
+        nav.append(InlineKeyboardButton("⏪", callback_data=f"nv|offchap|{title_id}|1"))
+        nav.append(InlineKeyboardButton("⬅️", callback_data=f"nv|offchap|{title_id}|{page - 1}"))
+    nav.append(InlineKeyboardButton(f"{page}/{total_pages}", callback_data="nv|noop"))
+    if page < total_pages:
+        nav.append(InlineKeyboardButton("➡️", callback_data=f"nv|offchap|{title_id}|{page + 1}"))
+        nav.append(InlineKeyboardButton("⏩", callback_data=f"nv|offchap|{title_id}|{total_pages}"))
+    rows.append(nav)
+
+    rows.append([InlineKeyboardButton("🔙 Voltar para a obra", callback_data=f"nv|title|{title_id}")])
+    return InlineKeyboardMarkup(rows)
+
+
+def _offline_chapter_text(chapter: dict, bundle: dict | None = None) -> str:
+    title = html.escape((bundle or {}).get("title") or chapter.get("title") or "Novel")
+    number = html.escape(chapter.get("chapter_number") or "?")
+    paragraphs = html.escape(str(len(chapter.get("paragraphs") or [])))
+    return (
+        f"📥 <b>PDF / EPUB offline</b>\n\n"
+        f"» <b>Obra:</b> <i>{title}</i>\n"
+        f"» <b>Capitulo:</b> <i>{number}</i>\n"
+        f"» <b>Blocos de texto:</b> <i>{paragraphs}</i>\n\n"
+        "Escolha o formato para baixar."
+    )
+
+
+def _offline_chapter_keyboard(chapter: dict, page: int = 1) -> InlineKeyboardMarkup:
+    title_id = str(chapter.get("title_id") or "").strip()
+    chapter_id = str(chapter.get("chapter_id") or "").strip()
+    rows: list[list[InlineKeyboardButton]] = [
+        [
+            InlineKeyboardButton("📄 Baixar PDF", callback_data=f"nv|offpdf|{chapter_id}|{title_id}|{page}"),
+            InlineKeyboardButton("📚 Baixar EPUB", callback_data=f"nv|offepub|{chapter_id}|{title_id}|{page}"),
+        ]
+    ]
+
+    nav: list[InlineKeyboardButton] = []
+    if chapter.get("previous_chapter"):
+        nav.append(
             InlineKeyboardButton(
                 "⬅️ Anterior",
-                callback_data=f"nv|read|{chapter['previous_chapter']['chapter_id']}|{title_id}",
+                callback_data=f"nv|offread|{chapter['previous_chapter']['chapter_id']}|{title_id}|{page}",
             )
         )
     if chapter.get("next_chapter"):
         nav.append(
             InlineKeyboardButton(
                 "Proximo ➡️",
-                callback_data=f"nv|read|{chapter['next_chapter']['chapter_id']}|{title_id}",
+                callback_data=f"nv|offread|{chapter['next_chapter']['chapter_id']}|{title_id}|{page}",
             )
         )
     if nav:
         rows.append(nav)
-
-    rows.append([InlineKeyboardButton("📚 Ver capitulos", callback_data=f"nv|chap|{title_id}|1")])
+    rows.append([InlineKeyboardButton("📚 Ver capitulos", callback_data=f"nv|offchap|{title_id}|{page}")])
     return InlineKeyboardMarkup(rows)
 
 
@@ -531,6 +769,107 @@ async def send_chapters_page(target, context: ContextTypes.DEFAULT_TYPE, title_i
         _set_panel_state(panel_message.chat.id, panel_message.message_id, "chapters", bundle["title_id"])
 
 
+async def send_offline_panel(target, context: ContextTypes.DEFAULT_TYPE, title_id: str, user_id: int | None, *, edit: bool):
+    bundle = get_cached_novel_bundle(title_id) or await get_novel_bundle(title_id)
+    if not is_offline_user_allowed(user_id):
+        panel_message = await _render_panel(
+            target,
+            _offline_locked_text(bundle),
+            _offline_locked_keyboard(bundle, user_id),
+            _pick_bundle_image(bundle),
+            edit=edit,
+        )
+        if panel_message:
+            _set_panel_state(panel_message.chat.id, panel_message.message_id, "offline_locked", bundle["title_id"])
+        return
+
+    await send_offline_chapters_page(target, context, title_id, 1, user_id, edit=edit)
+
+
+async def send_offline_chapters_page(
+    target,
+    context: ContextTypes.DEFAULT_TYPE,
+    title_id: str,
+    page: int,
+    user_id: int | None,
+    *,
+    edit: bool,
+):
+    bundle = get_cached_novel_bundle(title_id) or await get_novel_bundle(title_id)
+    if not is_offline_user_allowed(user_id):
+        panel_message = await _render_panel(
+            target,
+            _offline_locked_text(bundle),
+            _offline_locked_keyboard(bundle, user_id),
+            _pick_bundle_image(bundle),
+            edit=edit,
+        )
+        if panel_message:
+            _set_panel_state(panel_message.chat.id, panel_message.message_id, "offline_locked", bundle["title_id"])
+        return
+
+    chapters = _ordered_chapters(bundle)
+    total_pages = max(1, ((len(chapters) - 1) // CHAPTERS_PER_PAGE) + 1)
+    page = max(1, min(page, total_pages))
+
+    panel_message = await _render_panel(
+        target,
+        _offline_chapters_text(bundle, page, len(chapters)),
+        _offline_chapters_keyboard(bundle, chapters, page),
+        _pick_bundle_image(bundle),
+        edit=edit,
+    )
+    if panel_message:
+        _set_panel_state(panel_message.chat.id, panel_message.message_id, "offline_chapters", bundle["title_id"])
+
+
+async def send_offline_chapter_panel(
+    target,
+    context: ContextTypes.DEFAULT_TYPE,
+    chapter_id: str,
+    user_id: int | None,
+    *,
+    title_hint: str = "",
+    page: int = 1,
+    edit: bool,
+):
+    chapter = get_cached_chapter_payload(chapter_id) or await get_chapter_payload(chapter_id)
+    if not chapter.get("title_id") and title_hint:
+        chapter["title_id"] = title_hint
+
+    bundle = None
+    if chapter.get("title_id"):
+        bundle = get_cached_novel_bundle(chapter["title_id"]) or await get_novel_bundle(chapter["title_id"])
+
+    if not is_offline_user_allowed(user_id):
+        panel_message = await _render_panel(
+            target,
+            _offline_locked_text(bundle or chapter),
+            _offline_locked_keyboard(bundle or chapter, user_id),
+            _pick_bundle_image(bundle),
+            edit=edit,
+        )
+        if panel_message:
+            _set_panel_state(panel_message.chat.id, panel_message.message_id, "offline_locked", chapter.get("title_id") or "")
+        return
+
+    adjacent_refs = [
+        (chapter.get("previous_chapter") or {}).get("chapter_id") or "",
+        (chapter.get("next_chapter") or {}).get("chapter_id") or "",
+    ]
+    prefetch_chapter_payloads(adjacent_refs, limit=2)
+
+    panel_message = await _render_panel(
+        target,
+        _offline_chapter_text(chapter, bundle),
+        _offline_chapter_keyboard(chapter, page),
+        _pick_bundle_image(bundle),
+        edit=edit,
+    )
+    if panel_message:
+        _set_panel_state(panel_message.chat.id, panel_message.message_id, "offline_chapter", chapter["chapter_id"])
+
+
 async def send_chapter_panel(
     target,
     context: ContextTypes.DEFAULT_TYPE,
@@ -578,10 +917,10 @@ async def send_chapter_panel(
 
     telegraph_title = _chapter_telegraph_title(chapter, bundle)
     paragraphs = chapter.get("paragraphs") or []
-    telegraph_url = get_cached_chapter_page_url(chapter["chapter_id"], telegraph_title, paragraphs)
+    telegraph_url = "" if WEBAPP_BASE_URL else get_cached_chapter_page_url(chapter["chapter_id"], telegraph_title, paragraphs)
     telegraph_task: asyncio.Task | None = None
 
-    if not telegraph_url and paragraphs:
+    if not WEBAPP_BASE_URL and not telegraph_url and paragraphs:
         telegraph_task = asyncio.create_task(
             get_or_create_chapter_page(
                 chapter_id=chapter["chapter_id"],
@@ -609,7 +948,8 @@ async def send_chapter_panel(
     if panel_message and not telegraph_url and telegraph_task is not None:
         fire_and_forget(_auto_finalize_telegraph_panel(context, panel_message, chapter, bundle, telegraph_task))
 
-    fire_and_forget(_prewarm_next_chapter_telegraph(chapter, telegraph_task))
+    if not WEBAPP_BASE_URL:
+        fire_and_forget(_prewarm_next_chapter_telegraph(chapter, telegraph_task))
 
 
 async def _send_telegraph(query, chapter_id: str, title_hint: str = ""):
@@ -649,6 +989,7 @@ async def _enqueue_pdf(query, context: ContextTypes.DEFAULT_TYPE, chapter_id: st
     title_name = (bundle or {}).get("title") or chapter.get("title") or "Novel"
     chapter_number = chapter.get("chapter_number") or "?"
 
+    tag = html.escape(DISTRIBUTION_TAG or "")
     await enqueue_pdf_job(
         context.application,
         PdfJob(
@@ -660,8 +1001,8 @@ async def _enqueue_pdf(query, context: ContextTypes.DEFAULT_TYPE, chapter_id: st
             caption=(
                 f"📄 <b>{html.escape(title_name)}</b>\n"
                 f"Capitulo <code>{html.escape(str(chapter_number))}</code>\n"
-                "Seu PDF ja esta pronto."
-            ),
+                f"{tag}"
+            ).strip(),
         ),
     )
     return chapter, bundle
@@ -679,6 +1020,7 @@ async def _enqueue_epub(query, context: ContextTypes.DEFAULT_TYPE, chapter_id: s
     title_name = (bundle or {}).get("title") or chapter.get("title") or "Novel"
     chapter_number = chapter.get("chapter_number") or "?"
 
+    tag = html.escape(DISTRIBUTION_TAG or "")
     await enqueue_epub_job(
         context.application,
         EpubJob(
@@ -690,8 +1032,8 @@ async def _enqueue_epub(query, context: ContextTypes.DEFAULT_TYPE, chapter_id: s
             caption=(
                 f"📚 <b>{html.escape(title_name)}</b>\n"
                 f"Capitulo <code>{html.escape(str(chapter_number))}</code>\n"
-                "Seu EPUB ja esta pronto."
-            ),
+                f"{tag}"
+            ).strip(),
         ),
     )
     return chapter, bundle
@@ -753,6 +1095,41 @@ async def callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     await send_chapters_page(query, context, parts[2], int(parts[3]), user_id, edit=True)
                     return
 
+                if action == "offline" and len(parts) >= 3:
+                    await _safe_answer_query(query)
+                    if is_offline_user_allowed(user_id):
+                        await _show_loading_markup(query, "⏳ Carregando offline")
+                    else:
+                        await _show_loading_markup(query, "🔒 Plano offline")
+                    await send_offline_panel(query, context, parts[2], user_id, edit=True)
+                    return
+
+                if action == "offchap" and len(parts) >= 4:
+                    await _safe_answer_query(query)
+                    if is_offline_user_allowed(user_id):
+                        await _show_loading_markup(query, "⏳ Carregando capitulos")
+                    else:
+                        await _show_loading_markup(query, "🔒 Plano offline")
+                    await send_offline_chapters_page(query, context, parts[2], int(parts[3]), user_id, edit=True)
+                    return
+
+                if action == "offread" and len(parts) >= 3:
+                    await _safe_answer_query(query)
+                    if is_offline_user_allowed(user_id):
+                        await _show_loading_markup(query, "⏳ Abrindo capitulo offline")
+                    else:
+                        await _show_loading_markup(query, "🔒 Plano offline")
+                    await send_offline_chapter_panel(
+                        query,
+                        context,
+                        parts[2],
+                        user_id,
+                        title_hint=parts[3] if len(parts) >= 4 else "",
+                        page=int(parts[4]) if len(parts) >= 5 else 1,
+                        edit=True,
+                    )
+                    return
+
                 if action == "read" and len(parts) >= 3:
                     await _safe_answer_query(query)
                     await _show_loading_markup(query, "⏳ Abrindo capitulo")
@@ -783,6 +1160,18 @@ async def callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     return
 
                 if action == "pdf" and len(parts) >= 3:
+                    if not is_offline_user_allowed(user_id):
+                        await _safe_answer_query(query, "PDF e EPUB sao liberados para assinantes.", show_alert=True)
+                        await _show_loading_markup(query, "🔒 Plano offline")
+                        await send_offline_chapter_panel(
+                            query,
+                            context,
+                            parts[2],
+                            user_id,
+                            title_hint=parts[3] if len(parts) >= 4 else "",
+                            edit=True,
+                        )
+                        return
                     await _safe_answer_query(query)
                     await _show_loading_markup(query, "⏳ Preparando PDF")
                     chapter, bundle = await _enqueue_pdf(query, context, parts[2], parts[3] if len(parts) >= 4 else "")
@@ -806,6 +1195,18 @@ async def callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     return
 
                 if action == "epub" and len(parts) >= 3:
+                    if not is_offline_user_allowed(user_id):
+                        await _safe_answer_query(query, "PDF e EPUB sao liberados para assinantes.", show_alert=True)
+                        await _show_loading_markup(query, "🔒 Plano offline")
+                        await send_offline_chapter_panel(
+                            query,
+                            context,
+                            parts[2],
+                            user_id,
+                            title_hint=parts[3] if len(parts) >= 4 else "",
+                            edit=True,
+                        )
+                        return
                     await _safe_answer_query(query)
                     await _show_loading_markup(query, "⏳ Preparando EPUB")
                     chapter, bundle = await _enqueue_epub(query, context, parts[2], parts[3] if len(parts) >= 4 else "")
@@ -823,6 +1224,58 @@ async def callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             telegraph_url=telegraph_url,
                             telegraph_pending=not bool(telegraph_url),
                         ),
+                        _pick_bundle_image(bundle),
+                        edit=True,
+                    )
+                    return
+
+                if action == "offpdf" and len(parts) >= 3:
+                    if not is_offline_user_allowed(user_id):
+                        await _safe_answer_query(query, "Funcao liberada para assinantes.", show_alert=True)
+                        await _show_loading_markup(query, "🔒 Plano offline")
+                        await send_offline_chapter_panel(
+                            query,
+                            context,
+                            parts[2],
+                            user_id,
+                            title_hint=parts[3] if len(parts) >= 4 else "",
+                            page=int(parts[4]) if len(parts) >= 5 else 1,
+                            edit=True,
+                        )
+                        return
+                    await _safe_answer_query(query, "PDF enviado para a fila.", show_alert=False)
+                    await _show_loading_markup(query, "⏳ Preparando PDF")
+                    chapter, bundle = await _enqueue_pdf(query, context, parts[2], parts[3] if len(parts) >= 4 else "")
+                    await _render_panel(
+                        query,
+                        _offline_chapter_text(chapter, bundle),
+                        _offline_chapter_keyboard(chapter, int(parts[4]) if len(parts) >= 5 else 1),
+                        _pick_bundle_image(bundle),
+                        edit=True,
+                    )
+                    return
+
+                if action == "offepub" and len(parts) >= 3:
+                    if not is_offline_user_allowed(user_id):
+                        await _safe_answer_query(query, "Funcao liberada para assinantes.", show_alert=True)
+                        await _show_loading_markup(query, "🔒 Plano offline")
+                        await send_offline_chapter_panel(
+                            query,
+                            context,
+                            parts[2],
+                            user_id,
+                            title_hint=parts[3] if len(parts) >= 4 else "",
+                            page=int(parts[4]) if len(parts) >= 5 else 1,
+                            edit=True,
+                        )
+                        return
+                    await _safe_answer_query(query, "EPUB enviado para a fila.", show_alert=False)
+                    await _show_loading_markup(query, "⏳ Preparando EPUB")
+                    chapter, bundle = await _enqueue_epub(query, context, parts[2], parts[3] if len(parts) >= 4 else "")
+                    await _render_panel(
+                        query,
+                        _offline_chapter_text(chapter, bundle),
+                        _offline_chapter_keyboard(chapter, int(parts[4]) if len(parts) >= 5 else 1),
                         _pick_bundle_image(bundle),
                         edit=True,
                     )
