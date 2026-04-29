@@ -1,0 +1,924 @@
+
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Novels Baltigo</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #090a0d;
+      --panel: #14171d;
+      --panel-2: #1b2028;
+      --line: rgba(255, 255, 255, .1);
+      --text: #f4f6fb;
+      --muted: #a9b0bf;
+      --red: #e92f3d;
+      --cyan: #34c3d9;
+      --green: #5cc26b;
+      --shadow: 0 16px 50px rgba(0, 0, 0, .35);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 18% 0%, rgba(233, 47, 61, .2), transparent 28rem),
+        linear-gradient(145deg, #090a0d 0%, #11141a 48%, #08090c 100%);
+      letter-spacing: 0;
+    }
+
+    button, input {
+      font: inherit;
+    }
+
+    button {
+      border: 0;
+      color: inherit;
+      cursor: pointer;
+    }
+
+    .app {
+      width: min(100%, 920px);
+      margin: 0 auto;
+      padding: 14px 14px 88px;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 0 12px;
+      background: linear-gradient(180deg, rgba(9, 10, 13, .98), rgba(9, 10, 13, .78) 82%, transparent);
+      backdrop-filter: blur(10px);
+    }
+
+    .brand {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .brand strong {
+      display: block;
+      font-size: 18px;
+      line-height: 1.1;
+    }
+
+    .brand span {
+      display: block;
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .icon-btn, .tab-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 42px;
+      height: 42px;
+      border-radius: 8px;
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+    }
+
+    .search {
+      display: grid;
+      grid-template-columns: 1fr 48px;
+      gap: 8px;
+      margin: 4px 0 18px;
+    }
+
+    .search input {
+      min-width: 0;
+      height: 48px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 0 14px;
+      color: var(--text);
+      background: rgba(20, 23, 29, .92);
+      outline: none;
+    }
+
+    .primary {
+      background: var(--red);
+      color: white;
+      border-radius: 8px;
+      font-weight: 800;
+      box-shadow: 0 10px 24px rgba(233, 47, 61, .25);
+    }
+
+    .section {
+      margin: 18px 0 22px;
+    }
+
+    .section-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    h1, h2, h3, p {
+      margin: 0;
+    }
+
+    h2 {
+      font-size: 17px;
+      line-height: 1.2;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .rail {
+      display: grid;
+      grid-auto-flow: column;
+      grid-auto-columns: minmax(145px, 34%);
+      gap: 10px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      scroll-snap-type: x mandatory;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
+      gap: 10px;
+    }
+
+    .card {
+      min-width: 0;
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      scroll-snap-align: start;
+      box-shadow: var(--shadow);
+      text-align: left;
+    }
+
+    .cover {
+      width: 100%;
+      aspect-ratio: 3 / 4;
+      object-fit: cover;
+      display: block;
+      background: #20242c;
+    }
+
+    .card-body {
+      padding: 10px;
+    }
+
+    .card-title {
+      font-weight: 800;
+      line-height: 1.2;
+      font-size: 13px;
+      min-height: 32px;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+
+    .card-meta {
+      margin-top: 7px;
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .hero {
+      min-height: 230px;
+      display: grid;
+      align-items: end;
+      overflow: hidden;
+      border-radius: 8px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-bg {
+      grid-area: 1 / 1;
+      width: 100%;
+      height: 100%;
+      min-height: 230px;
+      object-fit: cover;
+      filter: saturate(1.04) brightness(.68);
+    }
+
+    .hero-info {
+      grid-area: 1 / 1;
+      padding: 18px;
+      background: linear-gradient(180deg, transparent, rgba(0, 0, 0, .86));
+    }
+
+    .hero-info h1 {
+      font-size: clamp(26px, 8vw, 46px);
+      line-height: .98;
+      max-width: 720px;
+    }
+
+    .meta-line {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 12px 0;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 4px 9px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, .1);
+      color: var(--text);
+      font-size: 12px;
+      border: 1px solid rgba(255, 255, 255, .08);
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .action {
+      min-height: 46px;
+      border-radius: 8px;
+      padding: 0 12px;
+      font-weight: 800;
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+    }
+
+    .action.hot { background: var(--red); }
+    .action.good { background: #247c45; }
+    .action.info { background: #1f6f83; }
+
+    .description {
+      margin: 16px 0;
+      color: #d9deea;
+      line-height: 1.65;
+      font-size: 15px;
+    }
+
+    .chapter-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .chapter-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      width: 100%;
+      min-height: 52px;
+      padding: 10px 12px;
+      text-align: left;
+      border-radius: 8px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+    }
+
+    .chapter-row strong {
+      font-size: 14px;
+    }
+
+    .chapter-row span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .reader {
+      display: grid;
+      min-height: calc(100vh - 110px);
+      grid-template-rows: auto 1fr auto;
+      gap: 12px;
+    }
+
+    .reader-head {
+      padding: 12px;
+      border-radius: 8px;
+      background: rgba(20, 23, 29, .92);
+      border: 1px solid var(--line);
+    }
+
+    .reader-title {
+      font-size: 16px;
+      font-weight: 900;
+      line-height: 1.25;
+    }
+
+    .reader-page {
+      padding: 20px 16px;
+      border-radius: 8px;
+      background: #f4f1e9;
+      color: #1b1a18;
+      box-shadow: var(--shadow);
+    }
+
+    .reader-page p {
+      margin: 0 0 1.05em;
+      font-size: 18px;
+      line-height: 1.75;
+    }
+
+    .reader-controls {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 8px;
+      position: sticky;
+      bottom: 78px;
+      z-index: 10;
+      padding: 8px;
+      border-radius: 8px;
+      background: rgba(20, 23, 29, .94);
+      border: 1px solid var(--line);
+      backdrop-filter: blur(10px);
+    }
+
+    .reader-controls .action {
+      min-height: 42px;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .stat {
+      min-height: 88px;
+      padding: 14px;
+      border-radius: 8px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+    }
+
+    .stat strong {
+      display: block;
+      font-size: 24px;
+      line-height: 1;
+    }
+
+    .stat span {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .empty, .loading {
+      padding: 28px 14px;
+      text-align: center;
+      color: var(--muted);
+      border-radius: 8px;
+      background: rgba(20, 23, 29, .72);
+      border: 1px solid var(--line);
+    }
+
+    .bottom-nav {
+      position: fixed;
+      left: 50%;
+      bottom: max(10px, env(safe-area-inset-bottom));
+      z-index: 40;
+      transform: translateX(-50%);
+      width: min(calc(100% - 20px), 520px);
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      padding: 7px;
+      border-radius: 12px;
+      background: rgba(20, 23, 29, .96);
+      border: 1px solid var(--line);
+      backdrop-filter: blur(12px);
+      box-shadow: var(--shadow);
+    }
+
+    .tab-btn {
+      min-width: 0;
+      height: 46px;
+      flex-direction: column;
+      gap: 2px;
+      font-size: 11px;
+      color: var(--muted);
+      background: transparent;
+      border-color: transparent;
+    }
+
+    .tab-btn.active {
+      color: white;
+      background: rgba(233, 47, 61, .18);
+      border-color: rgba(233, 47, 61, .28);
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    @media (min-width: 720px) {
+      .app { padding-top: 18px; }
+      .hero { min-height: 310px; }
+      .hero-bg { min-height: 310px; }
+      .rail { grid-auto-columns: minmax(160px, 20%); }
+      .actions { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .reader-page { padding: 34px 42px; }
+      .reader-page p { font-size: 19px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <button class="icon-btn" id="backBtn" title="Voltar">‹</button>
+      <div class="brand">
+        <strong>Novels Baltigo</strong>
+        <span id="subtitle">Leitura</span>
+      </div>
+      <button class="icon-btn" id="refreshBtn" title="Atualizar">↻</button>
+    </header>
+
+    <form class="search" id="searchForm">
+      <input id="searchInput" autocomplete="off" placeholder="Buscar novel">
+      <button class="primary" type="submit">⌕</button>
+    </form>
+
+    <section id="view"></section>
+  </main>
+
+  <nav class="bottom-nav">
+    <button class="tab-btn active" data-tab="home">⌂<span>Inicio</span></button>
+    <button class="tab-btn" data-tab="history">◴<span>Historico</span></button>
+    <button class="tab-btn" data-tab="favorites">★<span>Favoritos</span></button>
+    <button class="tab-btn" data-tab="profile">☻<span>Perfil</span></button>
+  </nav>
+
+  <script>
+    const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+    if (tg) {
+      tg.ready();
+      tg.expand();
+      document.body.style.backgroundColor = tg.themeParams.bg_color || "";
+    }
+
+    const qs = new URLSearchParams(location.search);
+    const apiBase = location.origin;
+    const user = tg && tg.initDataUnsafe && tg.initDataUnsafe.user ? tg.initDataUnsafe.user : {};
+    const userId = String(qs.get("user_id") || user.id || "guest");
+    const state = {
+      route: qs.get("route") || (qs.get("chapter_id") ? "reader" : qs.get("title_id") ? "detail" : "home"),
+      titleId: qs.get("title_id") || qs.get("id") || qs.get("novel_id") || "",
+      chapterId: qs.get("chapter_id") || qs.get("read") || qs.get("cap") || "",
+      currentTitle: null,
+      currentChapter: null,
+      currentPages: [],
+      currentPage: 1,
+      history: []
+    };
+
+    const view = document.getElementById("view");
+    const subtitle = document.getElementById("subtitle");
+    const searchForm = document.getElementById("searchForm");
+    const searchInput = document.getElementById("searchInput");
+    const backBtn = document.getElementById("backBtn");
+    const refreshBtn = document.getElementById("refreshBtn");
+
+    const storage = {
+      get(key, fallback) {
+        try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch (_) { return fallback; }
+      },
+      set(key, value) {
+        localStorage.setItem(key, JSON.stringify(value));
+      }
+    };
+
+    const localProgressKey = `novel_progress:${userId}`;
+    const localFavoritesKey = `novel_favorites:${userId}`;
+
+    function escapeHtml(value) {
+      return String(value || "").replace(/[&<>"']/g, char => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#039;"
+      }[char]));
+    }
+
+    async function api(path, options = {}) {
+      const response = await fetch(`${apiBase}${path}`, {
+        headers: { "Content-Type": "application/json" },
+        ...options
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.detail || `HTTP ${response.status}`);
+      }
+      return response.json();
+    }
+
+    function setLoading(text = "Carregando") {
+      view.innerHTML = `<div class="loading">${escapeHtml(text)}</div>`;
+    }
+
+    function empty(text) {
+      return `<div class="empty">${escapeHtml(text)}</div>`;
+    }
+
+    function card(item) {
+      const cover = item.cover_url || item.background_url || "";
+      const chapter = typeof item.latest_chapter === "object"
+        ? item.latest_chapter.chapter_number
+        : item.latest_chapter;
+      return `
+        <button class="card" data-title="${escapeHtml(item.title_id)}">
+          <img class="cover" src="${escapeHtml(cover)}" alt="" loading="lazy" onerror="this.style.display='none'">
+          <div class="card-body">
+            <div class="card-title">${escapeHtml(item.display_title || item.title || "Novel")}</div>
+            <div class="card-meta">${chapter ? "Cap. " + escapeHtml(chapter) : escapeHtml(item.status || "Novel")}</div>
+          </div>
+        </button>`;
+    }
+
+    function bindCards() {
+      view.querySelectorAll("[data-title]").forEach(button => {
+        button.addEventListener("click", () => openTitle(button.dataset.title));
+      });
+    }
+
+    function section(title, items, rail = true) {
+      if (!items || !items.length) return "";
+      return `
+        <section class="section">
+          <div class="section-head">
+            <h2>${escapeHtml(title)}</h2>
+          </div>
+          <div class="${rail ? "rail" : "grid"}">${items.map(card).join("")}</div>
+        </section>`;
+    }
+
+    async function renderHome() {
+      state.route = "home";
+      subtitle.textContent = "Inicio";
+      setActiveTab("home");
+      setLoading("Carregando novels");
+      const data = await api("/api/home?limit=14");
+      view.innerHTML = [
+        section("Atualizadas agora", data.latest_titles || data.recent_titles || []),
+        section("Catalogo", data.featured || data.popular || []),
+      ].join("") || empty("Nenhuma novel carregada agora.");
+      bindCards();
+    }
+
+    function latestChapter(title) {
+      const latest = title.latest_chapter;
+      if (latest && typeof latest === "object") return latest;
+      if (title.latest_chapter_id) {
+        return { chapter_id: title.latest_chapter_id, chapter_number: title.latest_chapter || "" };
+      }
+      return null;
+    }
+
+    function sortChapters(chapters) {
+      return [...(chapters || [])].sort((a, b) => {
+        const na = parseFloat(String(a.chapter_number || "").replace(",", "."));
+        const nb = parseFloat(String(b.chapter_number || "").replace(",", "."));
+        if (!Number.isNaN(na) && !Number.isNaN(nb)) return nb - na;
+        return String(b.chapter_number || "").localeCompare(String(a.chapter_number || ""));
+      });
+    }
+
+    async function openTitle(titleId) {
+      if (!titleId) return;
+      state.route = "detail";
+      state.titleId = titleId;
+      setActiveTab("");
+      subtitle.textContent = "Obra";
+      setLoading("Abrindo obra");
+      const title = await api(`/api/title/${encodeURIComponent(titleId)}?user_id=${encodeURIComponent(userId)}`);
+      state.currentTitle = title;
+      renderTitle(title);
+    }
+
+    function renderTitle(title) {
+      const latest = latestChapter(title);
+      const first = title.first_chapter || (title.chapters || [])[0] || latest;
+      const lastRead = title.last_read;
+      const favs = storage.get(localFavoritesKey, {});
+      const isFav = Boolean(favs[title.title_id]);
+      const cover = title.banner_url || title.background_url || title.cover_url || "";
+      const chapters = sortChapters(title.chapters || []);
+
+      view.innerHTML = `
+        <section class="hero">
+          <img class="hero-bg" src="${escapeHtml(cover)}" alt="" onerror="this.style.display='none'">
+          <div class="hero-info">
+            <h1>${escapeHtml(title.title || "Novel")}</h1>
+            <div class="meta-line">
+              <span class="pill">${escapeHtml(title.status || "Status")}</span>
+              <span class="pill">${escapeHtml(title.type || "Novel")}</span>
+              <span class="pill">${escapeHtml(title.total_chapters || chapters.length || "?")} caps</span>
+            </div>
+            <div class="actions">
+              ${lastRead && lastRead.chapter_id ? `<button class="action hot" id="continueBtn">Continuar</button>` : ""}
+              ${latest && latest.chapter_id ? `<button class="action info" id="latestBtn">Ultimo capitulo</button>` : ""}
+              ${first && first.chapter_id ? `<button class="action" id="firstBtn">Comecar</button>` : ""}
+              <button class="action good" id="favBtn">${isFav ? "Favoritado" : "Favoritar"}</button>
+            </div>
+          </div>
+        </section>
+        <p class="description">${escapeHtml(title.description || "Sem sinopse disponivel.")}</p>
+        <section class="section">
+          <div class="section-head"><h2>Capitulos</h2><span class="muted">${chapters.length}</span></div>
+          <div class="chapter-list">
+            ${chapters.map(chapter => `
+              <button class="chapter-row" data-chapter="${escapeHtml(chapter.chapter_id)}">
+                <strong>Capitulo ${escapeHtml(chapter.chapter_number || "?")}</strong>
+                <span>${escapeHtml(chapter.chapter_title || "Ler")}</span>
+              </button>
+            `).join("") || empty("Nenhum capitulo carregado.")}
+          </div>
+        </section>`;
+
+      document.getElementById("continueBtn")?.addEventListener("click", () => openReader(lastRead.chapter_id, title.title_id));
+      document.getElementById("latestBtn")?.addEventListener("click", () => openReader(latest.chapter_id, title.title_id));
+      document.getElementById("firstBtn")?.addEventListener("click", () => openReader(first.chapter_id, title.title_id));
+      document.getElementById("favBtn")?.addEventListener("click", () => toggleFavorite(title));
+      view.querySelectorAll("[data-chapter]").forEach(button => {
+        button.addEventListener("click", () => openReader(button.dataset.chapter, title.title_id));
+      });
+    }
+
+    async function toggleFavorite(title) {
+      const favs = storage.get(localFavoritesKey, {});
+      const exists = Boolean(favs[title.title_id]);
+      if (exists) {
+        delete favs[title.title_id];
+      } else {
+        favs[title.title_id] = {
+          title_id: title.title_id,
+          title: title.title,
+          display_title: title.display_title || title.title,
+          cover_url: title.cover_url,
+          background_url: title.background_url || title.banner_url,
+          latest_chapter: latestChapter(title),
+          status: title.status,
+          added_at: Date.now(),
+          updated_at: Date.now()
+        };
+      }
+      storage.set(localFavoritesKey, favs);
+      renderTitle(title);
+      if (userId !== "guest") {
+        await api("/api/favorites", {
+          method: "POST",
+          body: JSON.stringify({ ...favs[title.title_id], user_id: userId, title_id: title.title_id, favorite: !exists })
+        }).catch(() => null);
+      }
+    }
+
+    function chunkParagraphs(paragraphs) {
+      const pages = [];
+      for (let i = 0; i < paragraphs.length; i += 5) pages.push(paragraphs.slice(i, i + 5));
+      return pages.length ? pages : [["Capitulo sem texto carregado."]];
+    }
+
+    async function openReader(chapterId, titleId = "") {
+      if (!chapterId) return;
+      state.route = "reader";
+      state.chapterId = chapterId;
+      state.titleId = titleId || state.titleId;
+      setActiveTab("");
+      subtitle.textContent = "Leitor";
+      document.body.classList.add("reading");
+      setLoading("Abrindo capitulo");
+      const chapter = await api(`/api/chapter/${encodeURIComponent(chapterId)}`);
+      state.currentChapter = chapter;
+      state.titleId = chapter.title_id || state.titleId;
+      state.currentPages = chunkParagraphs(chapter.paragraphs || []);
+
+      const localProgress = storage.get(localProgressKey, {});
+      const stored = localProgress[state.titleId] || await api(`/api/progress?user_id=${encodeURIComponent(userId)}&title_id=${encodeURIComponent(state.titleId)}`).catch(() => ({}));
+      state.currentPage = stored && stored.chapter_id === chapter.chapter_id
+        ? Math.min(Math.max(1, Number(stored.page_index || 1)), state.currentPages.length)
+        : 1;
+
+      renderReader();
+    }
+
+    function renderReader() {
+      const chapter = state.currentChapter;
+      const page = state.currentPages[state.currentPage - 1] || [];
+      const progressText = `${state.currentPage}/${state.currentPages.length}`;
+
+      view.innerHTML = `
+        <section class="reader">
+          <div class="reader-head">
+            <div class="reader-title">${escapeHtml(chapter.title || "Novel")}</div>
+            <div class="muted">Capitulo ${escapeHtml(chapter.chapter_number || "?")} · Pagina ${progressText}</div>
+          </div>
+          <article class="reader-page">
+            ${page.map(paragraph => `<p>${escapeHtml(paragraph)}</p>`).join("")}
+          </article>
+          <div class="reader-controls">
+            <button class="action" id="prevPage" ${state.currentPage <= 1 ? "disabled" : ""}>Anterior</button>
+            <span class="muted">${progressText}</span>
+            <button class="action hot" id="nextPage">${state.currentPage >= state.currentPages.length ? "Concluir" : "Proxima"}</button>
+          </div>
+        </section>`;
+
+      document.getElementById("prevPage").addEventListener("click", () => {
+        if (state.currentPage > 1) {
+          state.currentPage -= 1;
+          renderReader();
+        }
+      });
+      document.getElementById("nextPage").addEventListener("click", () => {
+        if (state.currentPage < state.currentPages.length) {
+          state.currentPage += 1;
+          renderReader();
+        } else if (chapter.next_chapter && chapter.next_chapter.chapter_id) {
+          openReader(chapter.next_chapter.chapter_id, chapter.title_id);
+        }
+      });
+      saveProgress();
+    }
+
+    async function saveProgress() {
+      const chapter = state.currentChapter;
+      if (!chapter || !state.titleId) return;
+      const payload = {
+        user_id: userId,
+        title_id: state.titleId,
+        title_name: chapter.title || "",
+        chapter_id: chapter.chapter_id,
+        chapter_number: chapter.chapter_number || "",
+        chapter_url: chapter.chapter_url || "",
+        page_index: state.currentPage,
+        total_pages: state.currentPages.length,
+        cover_url: chapter.cover_url || (state.currentTitle && state.currentTitle.cover_url) || "",
+        updated_at: Date.now()
+      };
+      const localProgress = storage.get(localProgressKey, {});
+      localProgress[state.titleId] = payload;
+      storage.set(localProgressKey, localProgress);
+      if (userId !== "guest") {
+        await api("/api/progress", { method: "POST", body: JSON.stringify(payload) }).catch(() => null);
+      }
+    }
+
+    async function renderSearch(query) {
+      state.route = "search";
+      setActiveTab("");
+      subtitle.textContent = "Busca";
+      setLoading("Buscando");
+      const data = await api(`/api/search?q=${encodeURIComponent(query)}&limit=24`);
+      view.innerHTML = section(`Busca: ${query}`, data.results || [], false) || empty("Nada encontrado.");
+      bindCards();
+    }
+
+    async function renderHistory() {
+      state.route = "history";
+      setActiveTab("history");
+      subtitle.textContent = "Historico";
+      const localProgress = storage.get(localProgressKey, {});
+      let items = Object.values(localProgress).sort((a, b) => Number(b.updated_at || 0) - Number(a.updated_at || 0));
+      if (userId !== "guest") {
+        const remote = await api(`/api/history?user_id=${encodeURIComponent(userId)}&limit=100`).catch(() => null);
+        if (remote && remote.items && remote.items.length) items = remote.items;
+      }
+      view.innerHTML = `
+        <section class="section">
+          <div class="section-head"><h2>Historico</h2><span class="muted">${items.length}</span></div>
+          <div class="chapter-list">
+            ${items.map(item => `
+              <button class="chapter-row" data-history-chapter="${escapeHtml(item.chapter_id)}" data-history-title="${escapeHtml(item.title_id)}">
+                <strong>${escapeHtml(item.title_name || "Novel")}</strong>
+                <span>Cap. ${escapeHtml(item.chapter_number || "?")} · ${escapeHtml(item.page_index || 1)}/${escapeHtml(item.total_pages || 1)}</span>
+              </button>
+            `).join("") || empty("Seu historico vai aparecer aqui.")}
+          </div>
+        </section>`;
+      view.querySelectorAll("[data-history-chapter]").forEach(button => {
+        button.addEventListener("click", () => openReader(button.dataset.historyChapter, button.dataset.historyTitle));
+      });
+    }
+
+    async function renderFavorites() {
+      state.route = "favorites";
+      setActiveTab("favorites");
+      subtitle.textContent = "Favoritos";
+      let favs = Object.values(storage.get(localFavoritesKey, {}));
+      if (userId !== "guest") {
+        const remote = await api(`/api/favorites?user_id=${encodeURIComponent(userId)}`).catch(() => null);
+        if (remote && remote.items) favs = remote.items;
+      }
+      view.innerHTML = section("Favoritos", favs, false) || empty("Nenhum favorito ainda.");
+      bindCards();
+    }
+
+    async function renderProfile() {
+      state.route = "profile";
+      setActiveTab("profile");
+      subtitle.textContent = "Perfil";
+      const localProgress = storage.get(localProgressKey, {});
+      const localFavs = storage.get(localFavoritesKey, {});
+      let stats = {
+        favorites_count: Object.keys(localFavs).length,
+        chapters_read: Object.values(localProgress).length,
+        titles_opened: Object.values(localProgress).length,
+        pages_read: Object.values(localProgress).reduce((sum, item) => sum + Number(item.page_index || 1), 0),
+        offline_access: {}
+      };
+      if (userId !== "guest") {
+        stats = await api(`/api/profile?user_id=${encodeURIComponent(userId)}`).catch(() => stats);
+      }
+      const access = stats.offline_access || {};
+      view.innerHTML = `
+        <section class="section">
+          <div class="section-head"><h2>Seu perfil</h2><span class="muted">ID ${escapeHtml(userId)}</span></div>
+          <div class="stats">
+            <div class="stat"><strong>${escapeHtml(stats.favorites_count || 0)}</strong><span>Favoritos</span></div>
+            <div class="stat"><strong>${escapeHtml(stats.chapters_read || 0)}</strong><span>Caps lidos</span></div>
+            <div class="stat"><strong>${escapeHtml(stats.titles_opened || 0)}</strong><span>Obras abertas</span></div>
+            <div class="stat"><strong>${escapeHtml(stats.pages_read || 0)}</strong><span>Paginas lidas</span></div>
+          </div>
+        </section>
+        <section class="section">
+          <div class="chapter-row">
+            <strong>Offline</strong>
+            <span>${access.is_active ? "ativo" : "sem plano"}</span>
+          </div>
+        </section>`;
+    }
+
+    function setActiveTab(tab) {
+      document.querySelectorAll(".tab-btn").forEach(btn => {
+        btn.classList.toggle("active", btn.dataset.tab === tab);
+      });
+    }
+
+    searchForm.addEventListener("submit", event => {
+      event.preventDefault();
+      const query = searchInput.value.trim();
+      if (query.length >= 2) renderSearch(query).catch(showError);
+    });
+
+    backBtn.addEventListener("click", () => {
+      document.body.classList.remove("reading");
+      if (state.route === "reader" && state.titleId) return openTitle(state.titleId).catch(showError);
+      if (state.route !== "home") return renderHome().catch(showError);
+      if (tg) tg.close();
+    });
+
+    refreshBtn.addEventListener("click", () => boot(true).catch(showError));
+
+    document.querySelectorAll(".tab-btn").forEach(button => {
+      button.addEventListener("click", () => {
+        document.body.classList.remove("reading");
+        const tab = button.dataset.tab;
+        if (tab === "home") renderHome().catch(showError);
+        if (tab === "history") renderHistory().catch(showError);
+        if (tab === "favorites") renderFavorites().catch(showError);
+        if (tab === "profile") renderProfile().catch(showError);
+      });
+    });
+
+    function showError(error) {
+      view.innerHTML = `<div class="empty">${escapeHtml(error.message || "Nao consegui carregar agora.")}</div>`;
+    }
+
+    async function syncLocal() {
+      if (userId === "guest") return;
+      const progress = Object.values(storage.get(localProgressKey, {}));
+      const favorites = Object.values(storage.get(localFavoritesKey, {}));
+      if (progress.length) await api("/api/progress/sync", { method: "POST", body: JSON.stringify({ user_id: userId, progress }) }).catch(() => null);
+      if (favorites.length) await api("/api/favorites/sync", { method: "POST", body: JSON.stringify({ user_id: userId, favorites }) }).catch(() => null);
+    }
+
+    async function boot(forceHome = false) {
+      await syncLocal();
+      if (!forceHome && state.route === "reader" && state.chapterId) return openReader(state.chapterId, state.titleId);
+      if (!forceHome && state.route === "detail" && state.titleId) return openTitle(state.titleId);
+      return renderHome();
+    }
+
+    boot().catch(showError);
+  </script>
+</body>
+</html>
