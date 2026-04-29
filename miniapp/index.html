@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="pt-BR">
 <head>
@@ -10,20 +11,20 @@
   <style>
     :root {
       color-scheme: dark;
-      --bg:         #06050e;
-      --bg2:        #0c0b18;
-      --bg3:        #111028;
-      --surface:    rgba(16, 14, 32, 0.92);
-      --surface2:   rgba(22, 20, 42, 0.96);
-      --border:     rgba(138, 110, 255, 0.14);
-      --border2:    rgba(138, 110, 255, 0.28);
-      --text:       #f0eeff;
-      --muted:      #8b85b0;
-      --soft:       #ccc8f0;
-      --ink:        #1a1830;
-      --purple:     #9b6dff;
-      --purple2:    #7c4de8;
-      --violet:     #bf8fff;
+      --bg:         #08090d;
+      --bg2:        #101217;
+      --bg3:        #171a21;
+      --surface:    rgba(20, 22, 28, 0.94);
+      --surface2:   rgba(28, 31, 39, 0.96);
+      --border:     rgba(160, 166, 178, 0.16);
+      --border2:    rgba(202, 172, 96, 0.28);
+      --text:       #f3f4f0;
+      --muted:      #9298a3;
+      --soft:       #dde0e7;
+      --ink:        #15171c;
+      --purple:     #9aa0ab;
+      --purple2:    #6f7682;
+      --violet:     #e4e0d2;
       --gold:       #f0c060;
       --gold2:      #c89030;
       --teal:       #4de8c8;
@@ -33,7 +34,7 @@
       --radius-lg:  26px;
       --shadow:     0 32px 80px rgba(0, 0, 0, 0.60);
       --shadow-sm:  0 8px 32px rgba(0, 0, 0, 0.40);
-      --glow:       0 0 40px rgba(155, 109, 255, 0.25);
+      --glow:       0 0 34px rgba(210, 170, 90, 0.16);
       font-family: 'DM Sans', ui-sans-serif, system-ui, -apple-system, sans-serif;
     }
 
@@ -56,10 +57,8 @@
       inset: 0;
       pointer-events: none;
       background:
-        radial-gradient(ellipse 80% 60% at 10% -10%, rgba(120, 60, 220, 0.28) 0%, transparent 55%),
-        radial-gradient(ellipse 60% 50% at 95% 15%,  rgba(78, 40, 180, 0.18) 0%, transparent 50%),
-        radial-gradient(ellipse 70% 40% at 50% 100%, rgba(60, 30, 140, 0.22) 0%, transparent 60%),
-        linear-gradient(165deg, #06050e 0%, #0d0b1e 45%, #080614 100%);
+        linear-gradient(180deg, rgba(196, 156, 76, 0.08), transparent 220px),
+        linear-gradient(165deg, #08090d 0%, #13161d 48%, #090a0f 100%);
       z-index: 0;
     }
 
@@ -947,6 +946,10 @@
       font-weight: 300;
     }
 
+    .reader-page.continuous {
+      scroll-margin-top: 90px;
+    }
+
     .reader-page.dark p { font-weight: 300; }
 
     /* Drop cap for first paragraph */
@@ -986,6 +989,66 @@
       text-align: center;
     }
 
+    .news-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .news-card {
+      display: grid;
+      grid-template-columns: 92px 1fr;
+      gap: 14px;
+      width: 100%;
+      padding: 12px;
+      text-align: left;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: linear-gradient(160deg, rgba(28, 31, 39, 0.96), rgba(15, 17, 22, 0.96));
+      box-shadow: var(--shadow-sm);
+      animation: fadeUp 0.28s ease both;
+    }
+
+    .news-thumb, .news-thumb-fallback {
+      width: 92px;
+      aspect-ratio: 4 / 5;
+      border-radius: 10px;
+      object-fit: cover;
+      background: rgba(255,255,255,0.06);
+    }
+
+    .news-thumb-fallback {
+      display: grid;
+      place-items: center;
+      color: var(--gold);
+      font-family: 'Cinzel', serif;
+      font-size: 22px;
+      border: 1px solid var(--border);
+    }
+
+    .news-title {
+      color: var(--soft);
+      font-size: 15px;
+      font-weight: 700;
+      line-height: 1.25;
+    }
+
+    .news-meta {
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .news-excerpt {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
     /* ─── BOTTOM NAV ─── */
     .bottom-nav {
       position: fixed;
@@ -995,7 +1058,7 @@
       transform: translateX(-50%);
       width: min(calc(100% - 20px), 520px);
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(5, 1fr);
       gap: 4px;
       padding: 6px;
       border-radius: 22px;
@@ -1030,9 +1093,9 @@
     }
 
     .tab-btn.active {
-      color: var(--violet);
-      background: rgba(155, 109, 255, 0.14);
-      border-color: rgba(155, 109, 255, 0.28);
+      color: var(--gold);
+      background: rgba(202, 144, 48, 0.14);
+      border-color: rgba(202, 144, 48, 0.28);
     }
 
     .tab-btn:active { transform: scale(0.94); }
@@ -1200,6 +1263,7 @@
 
   <nav class="bottom-nav">
     <button class="tab-btn active" data-tab="home"><b>⌂</b><span>Início</span></button>
+    <button class="tab-btn" data-tab="news"><b>N</b><span>Noticias</span></button>
     <button class="tab-btn" data-tab="history"><b>◴</b><span>Histórico</span></button>
     <button class="tab-btn" data-tab="favorites"><b>★</b><span>Favoritos</span></button>
     <button class="tab-btn" data-tab="profile"><b>☻</b><span>Perfil</span></button>
@@ -1219,8 +1283,9 @@
       chapterId: qs.get("chapter_id") || qs.get("read") || qs.get("cap") || "",
       currentTitle: null,
       currentChapter: null,
-      currentPages: [],
-      currentPage: 1,
+      currentParagraphs: [],
+      scrollPercent: 0,
+      saveTimer: null,
       readerFont: Number(localStorage.getItem("novel_reader_font") || 18),
       readerDark: localStorage.getItem("novel_reader_dark") === "1"
     };
@@ -1284,6 +1349,7 @@
       state.route = route;
       subtitle.textContent = label || route;
       document.body.classList.toggle("reader-mode", route === "reader");
+      if (route !== "reader") window.removeEventListener("scroll", onReaderScroll);
     }
 
     /* ── Loading states ── */
@@ -1396,17 +1462,17 @@
     }
 
     async function renderHome() {
-      setRoute("home", "Início");
+      setRoute("home", "Inicio");
       setActiveTab("home");
       skeletonHome();
-      const data = await api("/api/home?limit=18", { timeout: 22000 });
+      const data = await api("/api/home?limit=240", { timeout: 30000 });
       const latest  = data.latest_titles || data.recent_titles || [];
-      const catalog = data.featured || data.popular || [];
+      const catalog = data.catalog || data.featured || data.popular || [];
       const hero = latest[0] || catalog[0];
       view.innerHTML = [
         spotlight(hero),
         railSection("Atualizadas agora", latest.slice(hero ? 1 : 0)),
-        railSection("Catálogo", catalog),
+        gridSection(`Catalogo (${data.catalog_count || catalog.length})`, catalog),
       ].join("") || emptyHtml("Nenhuma novel carregada agora.", "Tente atualizar.");
       bindCards();
     }
@@ -1571,18 +1637,9 @@
       }
     }
 
-    function chunkParagraphs(paragraphs) {
+    function cleanParagraphs(paragraphs) {
       const clean = (paragraphs || []).map(p => String(p || "").trim()).filter(Boolean);
-      const pages = [];
-      let bucket = [], chars = 0;
-      for (const p of clean) {
-        if (bucket.length && (bucket.length >= 5 || chars + p.length > 2300)) {
-          pages.push(bucket); bucket = []; chars = 0;
-        }
-        bucket.push(p); chars += p.length;
-      }
-      if (bucket.length) pages.push(bucket);
-      return pages.length ? pages : [["Não consegui carregar o texto deste capítulo agora. Tente atualizar ou abrir outro capítulo."]];
+      return clean.length ? clean : ["Nao consegui carregar o texto deste capitulo agora. Tente atualizar ou abrir outro capitulo."];
     }
 
     async function openReader(chapterId, titleId = "") {
@@ -1595,23 +1652,23 @@
       const chapter = await api(`/api/chapter/${encodeURIComponent(chapterId)}`, { timeout: 26000 });
       state.currentChapter = chapter;
       state.titleId = chapter.title_id || state.titleId;
-      state.currentPages = chunkParagraphs(chapter.paragraphs || []);
+      state.currentParagraphs = cleanParagraphs(chapter.paragraphs || []);
 
       const localProgress  = storage.get(localProgressKey, {});
       const remoteProgress = userId !== "guest" && state.titleId
         ? await api(`/api/progress?user_id=${encodeURIComponent(userId)}&title_id=${encodeURIComponent(state.titleId)}`).catch(() => ({}))
         : {};
       const stored = localProgress[state.titleId] || remoteProgress || {};
-      state.currentPage = stored && stored.chapter_id === chapter.chapter_id
-        ? Math.min(Math.max(1, Number(stored.page_index || 1)), state.currentPages.length)
-        : 1;
+      state.scrollPercent = stored && stored.chapter_id === chapter.chapter_id
+        ? Math.min(100, Math.max(0, Number(stored.scroll_percent || 0)))
+        : 0;
       renderReader();
     }
 
     function renderReader() {
       const chapter  = state.currentChapter;
-      const page     = state.currentPages[state.currentPage - 1] || [];
-      const progress = Math.round((state.currentPage / Math.max(1, state.currentPages.length)) * 100);
+      const paragraphs = state.currentParagraphs || [];
+      const progress = Math.round(state.scrollPercent || 0);
       document.documentElement.style.setProperty("--reader-font", `${state.readerFont}px`);
       view.innerHTML = `
         <div class="reader">
@@ -1620,10 +1677,10 @@
             <div class="reader-title">${escapeHtml(chapter.title || "Novel")}</div>
             <div class="reader-meta">
               <span>Cap. ${escapeHtml(chapter.chapter_number || "?")}</span>
-              <span>${state.currentPage} / ${state.currentPages.length}</span>
+              <span>${paragraphs.length} blocos</span>
             </div>
             <div class="progress-bar">
-              <div class="progress-fill" style="width:${progress}%"></div>
+              <div class="progress-fill" id="readerProgress" style="width:${progress}%"></div>
             </div>
             <div class="reader-tools">
               <button class="tool" id="fontDown">A−</button>
@@ -1632,24 +1689,24 @@
             </div>
           </div>
 
-          <article class="reader-page ${state.readerDark ? "dark" : ""}">
-            ${page.map(p => `<p>${escapeHtml(p)}</p>`).join("")}
+          <article class="reader-page continuous ${state.readerDark ? "dark" : ""}">
+            ${paragraphs.map(p => `<p>${escapeHtml(p)}</p>`).join("")}
           </article>
 
           <div class="reader-controls">
-            <button class="action" id="prevPage" ${state.currentPage <= 1 ? "disabled" : ""}>‹ Anterior</button>
-            <span class="reader-pct">${progress}%</span>
-            <button class="action hot" id="nextPage">${state.currentPage >= state.currentPages.length ? "Próx. cap. ›" : "Próxima ›"}</button>
+            <button class="action" id="prevChapter" ${chapter.previous_chapter && chapter.previous_chapter.chapter_id ? "" : "disabled"}>‹ Cap. anterior</button>
+            <span class="reader-pct" id="readerPct">${progress}%</span>
+            <button class="action hot" id="nextChapter" ${chapter.next_chapter && chapter.next_chapter.chapter_id ? "" : "disabled"}>Prox. cap. ›</button>
           </div>
         </div>`;
 
-      document.getElementById("prevPage").addEventListener("click", () => {
-        if (state.currentPage > 1) { state.currentPage--; renderReader(); window.scrollTo({ top: 0, behavior: "smooth" }); }
+      document.getElementById("prevChapter").addEventListener("click", () => {
+        if (chapter.previous_chapter && chapter.previous_chapter.chapter_id) {
+          openReader(chapter.previous_chapter.chapter_id, chapter.title_id).catch(showError);
+        }
       });
-      document.getElementById("nextPage").addEventListener("click", () => {
-        if (state.currentPage < state.currentPages.length) {
-          state.currentPage++; renderReader(); window.scrollTo({ top: 0, behavior: "smooth" });
-        } else if (chapter.next_chapter && chapter.next_chapter.chapter_id) {
+      document.getElementById("nextChapter").addEventListener("click", () => {
+        if (chapter.next_chapter && chapter.next_chapter.chapter_id) {
           openReader(chapter.next_chapter.chapter_id, chapter.title_id).catch(showError);
         }
       });
@@ -1668,7 +1725,31 @@
         localStorage.setItem("novel_reader_dark", state.readerDark ? "1" : "0");
         renderReader();
       });
+      requestAnimationFrame(() => {
+        const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+        window.scrollTo({ top: maxScroll * ((state.scrollPercent || 0) / 100), behavior: "auto" });
+        updateReaderProgress();
+      });
+      window.removeEventListener("scroll", onReaderScroll);
+      window.addEventListener("scroll", onReaderScroll, { passive: true });
       saveProgress();
+    }
+
+    function updateReaderProgress() {
+      if (state.route !== "reader") return;
+      const maxScroll = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+      state.scrollPercent = Math.min(100, Math.max(0, (window.scrollY / maxScroll) * 100));
+      const pct = Math.round(state.scrollPercent);
+      const fill = document.getElementById("readerProgress");
+      const label = document.getElementById("readerPct");
+      if (fill) fill.style.width = `${pct}%`;
+      if (label) label.textContent = `${pct}%`;
+    }
+
+    function onReaderScroll() {
+      updateReaderProgress();
+      clearTimeout(state.saveTimer);
+      state.saveTimer = setTimeout(() => saveProgress(), 450);
     }
 
     async function saveProgress() {
@@ -1681,8 +1762,10 @@
         chapter_id: chapter.chapter_id,
         chapter_number: chapter.chapter_number || "",
         chapter_url: chapter.chapter_url || "",
-        page_index: state.currentPage,
-        total_pages: state.currentPages.length,
+        page_index: 1,
+        total_pages: 1,
+        scroll_percent: Number((state.scrollPercent || 0).toFixed(2)),
+        paragraph_count: state.currentParagraphs.length,
         cover_url: chapter.cover_url || (state.currentTitle && state.currentTitle.cover_url) || "",
         updated_at: Date.now()
       };
@@ -1742,7 +1825,7 @@
                     : `<div class="history-thumb-fallback">📖</div>`}
                   <div>
                     <strong style="display:block;font-size:14px;font-weight:600;color:var(--soft)">${escapeHtml(item.title_name || "Novel")}</strong>
-                    <span style="display:block;font-size:12px;color:var(--muted);margin-top:3px">Cap. ${escapeHtml(item.chapter_number || "?")} · p. ${escapeHtml(item.page_index || 1)}/${escapeHtml(item.total_pages || 1)}</span>
+                    <span style="display:block;font-size:12px;color:var(--muted);margin-top:3px">Cap. ${escapeHtml(item.chapter_number || "?")} · ${Math.round(Number(item.scroll_percent || 0))}% lido</span>
                   </div>
                   <div class="chapter-arrow">›</div>
                 </button>
@@ -1776,6 +1859,49 @@
       bindCards();
     }
 
+    function newsCard(item, index = 0) {
+      const title = item.title || "Noticia";
+      const image = item.image_url || "";
+      const meta = [item.published_at, item.author].filter(Boolean).join(" · ");
+      return `
+        <button class="news-card" data-news-url="${escapeHtml(item.url || "")}" style="animation-delay:${Math.min(index*30, 240)}ms">
+          ${image
+            ? `<img class="news-thumb" src="${escapeHtml(image)}" alt="" loading="lazy">`
+            : `<div class="news-thumb-fallback">N</div>`}
+          <div>
+            <div class="news-title">${escapeHtml(title)}</div>
+            ${meta ? `<div class="news-meta">${escapeHtml(meta)}</div>` : ""}
+            ${item.excerpt ? `<div class="news-excerpt">${escapeHtml(item.excerpt)}</div>` : ""}
+          </div>
+        </button>`;
+    }
+
+    async function renderNews() {
+      setRoute("news", "Noticias");
+      setActiveTab("news");
+      setLoading("Carregando noticias");
+      const data = await api("/api/news?limit=20", { timeout: 22000 });
+      const items = data.items || [];
+      view.innerHTML = items.length
+        ? `<div class="section">
+            <div class="section-head">
+              <h2 class="section-title">Noticias</h2>
+              <span class="section-count">${items.length}</span>
+            </div>
+            <div class="ornament">✦</div>
+            <div class="news-list">${items.map(newsCard).join("")}</div>
+          </div>`
+        : emptyHtml("Nenhuma noticia carregada agora.", "Tente atualizar em alguns segundos.");
+      view.querySelectorAll("[data-news-url]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const url = btn.dataset.newsUrl;
+          if (!url) return;
+          if (tg && tg.openLink) tg.openLink(url);
+          else window.open(url, "_blank", "noopener,noreferrer");
+        });
+      });
+    }
+
     async function renderProfile() {
       setRoute("profile", "Perfil");
       setActiveTab("profile");
@@ -1803,7 +1929,7 @@
             <div class="stat"><span class="stat-value">${escapeHtml(stats.favorites_count || 0)}</span><span class="stat-label">Favoritos</span></div>
             <div class="stat"><span class="stat-value">${escapeHtml(stats.chapters_read  || 0)}</span><span class="stat-label">Caps lidos</span></div>
             <div class="stat"><span class="stat-value">${escapeHtml(stats.titles_opened  || 0)}</span><span class="stat-label">Obras abertas</span></div>
-            <div class="stat"><span class="stat-value">${escapeHtml(stats.pages_read     || 0)}</span><span class="stat-label">Páginas lidas</span></div>
+            <div class="stat"><span class="stat-value">${escapeHtml(stats.pages_read     || 0)}</span><span class="stat-label">Caps salvos</span></div>
           </div>
         </div>
         <div class="section">
@@ -1872,6 +1998,7 @@
       btn.addEventListener("click", () => {
         const tab = btn.dataset.tab;
         if (tab === "home")      renderHome().catch(showError);
+        if (tab === "news")      renderNews().catch(showError);
         if (tab === "history")   renderHistory().catch(showError);
         if (tab === "favorites") renderFavorites().catch(showError);
         if (tab === "profile")   renderProfile().catch(showError);
@@ -1881,6 +2008,7 @@
     async function boot(forceHome = false) {
       syncLocal().catch(() => null);
       if (!forceHome && state.route === "reader" && state.chapterId) return openReader(state.chapterId, state.titleId);
+      if (!forceHome && state.route === "news") return renderNews();
       if (!forceHome && state.titleId && ["detail", "chapters"].includes(state.route)) return openTitle(state.titleId);
       return renderHome();
     }
