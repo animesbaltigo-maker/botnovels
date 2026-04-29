@@ -1,4 +1,4 @@
-﻿import os
+import os
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -50,6 +50,16 @@ def _env_float(name: str, default: float) -> float:
         return default
 
 
+def _env_int_list(name: str) -> list[int]:
+    raw = os.getenv(name, "").replace(";", ",")
+    values: list[int] = []
+    for item in raw.split(","):
+        item = item.strip()
+        if item.isdigit():
+            values.append(int(item))
+    return values
+
+
 def _env_bool(name: str, default: bool) -> bool:
     raw = os.getenv(name, "").strip().lower()
     if not raw:
@@ -64,6 +74,7 @@ def _env_bool(name: str, default: bool) -> bool:
 BOT_TOKEN = os.getenv("BOT_TOKEN", "8625342322:AAFekc5f1I0vp2MIxlSpKW1uZM56nUu5qok").strip()
 BOT_USERNAME = os.getenv("BOT_USERNAME", "NovelsBrasil_Bot").strip().lstrip("@")
 BOT_BRAND = os.getenv("BOT_BRAND", "Novels Baltigo").strip() or "Novels Baltigo"
+WEBAPP_BASE_URL = os.getenv("WEBAPP_BASE_URL", "").strip().rstrip("/")
 CATALOG_SITE_BASE = (
     os.getenv("CATALOG_SITE_BASE", "").strip()
     or "https://centralnovel.com"
@@ -106,7 +117,7 @@ PROMO_BANNER_URL = os.getenv(
     "https://photo.chelpbot.me/AgACAgEAAxkBaVoTGGnNi8MFSYpTv6T5RQ1sZrFGXlCTAALEC2sbbQtxRpemdjcbCk3sAQADAgADeQADOgQ/photo.jpg",
 ).strip()
 TELEGRAPH_AUTHOR = os.getenv("TELEGRAPH_AUTHOR", BOT_BRAND).strip() or BOT_BRAND
-DISTRIBUTION_TAG = os.getenv("DISTRIBUTION_TAG", "@MangasBrasil").strip() or "@MangasBrasil"
+DISTRIBUTION_TAG = os.getenv("DISTRIBUTION_TAG", "@NovelsBrasil").strip() or "@NovelsBrasil"
 PDF_CACHE_DIR = str(DATA_DIR / "pdf_cache")
 PDF_NAME_PATTERN = os.getenv("PDF_NAME_PATTERN", "{title} - Capitulo {chapter}.pdf").strip() or "{title} - Capitulo {chapter}.pdf"
 EPUB_CACHE_DIR = str(DATA_DIR / "epub_cache")
@@ -115,5 +126,37 @@ PDF_QUEUE_LIMIT = _env_int("PDF_QUEUE_LIMIT", 30)
 PDF_WORKERS_SINGLE = _env_int("PDF_WORKERS_SINGLE", 1)
 PDF_WORKERS_BULK = _env_int("PDF_WORKERS_BULK", 1)
 PDF_PROTECT_CONTENT = _env_bool("PDF_PROTECT_CONTENT", True)
-STICKER_DIVISOR = os.getenv("STICKER_DIVISOR", "").strip()
+PDF_BULK_ALLOWED_IDS = sorted(set(ADMIN_IDS + _env_int_list("PDF_BULK_ALLOWED_IDS")))
+PDF_BULK_MAX_CHAPTERS = _env_int("PDF_BULK_MAX_CHAPTERS", 0)
+PDF_BULK_DELAY_SECONDS = _env_float("PDF_BULK_DELAY_SECONDS", 0.2)
+PDF_BULK_SUBSCRIBE_URL = os.getenv("PDF_BULK_SUBSCRIBE_URL", REQUIRED_CHANNEL_URL).strip()
 
+CAKTO_WEBHOOK_SECRET = os.getenv("CAKTO_WEBHOOK_SECRET", "").strip()
+CAKTO_NOTIFY_USERS = _env_bool("CAKTO_NOTIFY_USERS", True)
+CAKTO_PLAN_BRONZE_URL = (
+    os.getenv("CAKTO_PLAN_BRONZE_URL", "").strip()
+    or os.getenv("CAKTO_PLAN_WEEKLY_URL", "").strip()
+    or "https://pay.cakto.com.br/wyd3e3i"
+)
+CAKTO_PLAN_OURO_URL = (
+    os.getenv("CAKTO_PLAN_OURO_URL", "").strip()
+    or os.getenv("CAKTO_PLAN_MONTHLY_URL", "").strip()
+    or "https://pay.cakto.com.br/38kt683_866815"
+)
+CAKTO_PLAN_DIAMANTE_URL = (
+    os.getenv("CAKTO_PLAN_DIAMANTE_URL", "").strip()
+    or os.getenv("CAKTO_PLAN_ANNUAL_URL", "").strip()
+    or os.getenv("CAKTO_PLAN_12M_URL", "").strip()
+    or "https://pay.cakto.com.br/33mfwfe"
+)
+CAKTO_PLAN_RUBI_URL = (
+    os.getenv("CAKTO_PLAN_RUBI_URL", "").strip()
+    or "https://pay.cakto.com.br/57t5ieq"
+)
+CAKTO_PLAN_1M_URL = CAKTO_PLAN_OURO_URL
+CAKTO_PLAN_3M_URL = os.getenv("CAKTO_PLAN_3M_URL", "").strip()
+CAKTO_PLAN_6M_URL = os.getenv("CAKTO_PLAN_6M_URL", "").strip()
+CAKTO_PLAN_LIFETIME_URL = CAKTO_PLAN_RUBI_URL
+
+AI_TIMEZONE = os.getenv("AI_TIMEZONE", "America/Cuiaba").strip()
+STICKER_DIVISOR = os.getenv("STICKER_DIVISOR", "").strip()
