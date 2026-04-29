@@ -160,6 +160,3 @@ CAKTO_PLAN_LIFETIME_URL = CAKTO_PLAN_RUBI_URL
 
 AI_TIMEZONE = os.getenv("AI_TIMEZONE", "America/Cuiaba").strip()
 STICKER_DIVISOR = os.getenv("STICKER_DIVISOR", "").strip()
-BALTIGOFLIX_URL = os.getenv("BALTIGOFLIX_URL", "http://baltigoflix.com.br/").strip().rstrip("/")
-BALTIGOFLIX_SUPPORT_URL = os.getenv("BALTIGOFLIX_SUPPORT_URL", "https://t.me/SourceBaltigo_Bot").strip()
-CAKTO_WEBHOOK_SECRET = os.getenv("CAKTO_WEBHOOK_SECRET", "").strip()
