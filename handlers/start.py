@@ -183,7 +183,8 @@ async def _send_welcome(message, first_name: str) -> None:
         "• Use <code>/novel nome da obra</code>\n"
         "• Abra a obra\n"
         "• Escolha um capitulo\n"
-        "• Leia pelo Telegraph\n\n"
+        "• Leia pelo WebApp\n"
+        "• Use /plano para liberar PDF e EPUB\n\n"
     )
 
     if keyboard_rows:
