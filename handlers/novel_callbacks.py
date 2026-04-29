@@ -6,7 +6,15 @@ from urllib.parse import urlencode
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, InputMediaPhoto, Update, WebAppInfo
 from telegram.ext import ContextTypes
 
-from config import BOT_BRAND, CHAPTERS_PER_PAGE, DISTRIBUTION_TAG, PROMO_BANNER_URL, WEBAPP_BASE_URL
+from config import (
+    BOT_BRAND,
+    CHAPTERS_PER_PAGE,
+    DISTRIBUTION_TAG,
+    PDF_BULK_ALLOWED_IDS,
+    PDF_BULK_SUBSCRIBE_URL,
+    PROMO_BANNER_URL,
+    WEBAPP_BASE_URL,
+)
 from core.background import fire_and_forget, fire_and_forget_sync, run_sync
 from core.pdf_queue import EpubJob, PdfJob, enqueue_epub_job, enqueue_pdf_job
 from handlers.novel import edit_search_page, render_search_page
@@ -31,6 +39,7 @@ from services.telegraph_service import get_cached_chapter_page_url, get_or_creat
 CALLBACK_COOLDOWN = 0.8
 TELEGRAPH_INLINE_WAIT = 1.4
 SUPPORT_BOT_URL = "https://t.me/QGSuporteBot"
+_OFFLINE_ALLOWED_USERS = set(PDF_BULK_ALLOWED_IDS)
 
 _USER_CALLBACK_LOCKS: dict[int, asyncio.Lock] = {}
 _MESSAGE_EDIT_LOCKS: dict[str, asyncio.Lock] = {}
@@ -82,6 +91,16 @@ def _reader_button(label: str, *, title_id: str = "", chapter_id: str = "", rout
     if url:
         return InlineKeyboardButton(label, web_app=WebAppInfo(url=url))
     return InlineKeyboardButton(label, callback_data=fallback or "nv|noop")
+
+
+def can_use_offline(user_id: int | str | None) -> bool:
+    if user_id is None:
+        return False
+    try:
+        uid = int(user_id)
+    except (TypeError, ValueError):
+        return False
+    return uid in _OFFLINE_ALLOWED_USERS or is_offline_user_allowed(uid)
 
 
 def _now() -> float:
@@ -425,6 +444,15 @@ def _chapter_keyboard(chapter: dict, telegraph_url: str = "", *, telegraph_pendi
     return InlineKeyboardMarkup(rows)
 
 
+def _normalize_url(url: str) -> str:
+    url = str(url or "").strip()
+    if not url:
+        return ""
+    if url.startswith(("http://", "https://", "tg://")):
+        return url
+    return f"https://{url}"
+
+
 def _download_label(item: dict) -> str:
     number = str(item.get("chapter_number") or "?").strip()
     lowered = number.lower()
@@ -439,21 +467,67 @@ def _offline_locked_text(bundle: dict) -> str:
     title = html.escape(bundle.get("title") or "Novel")
     brand = html.escape(BOT_BRAND or "Novels Baltigo")
     return (
-        f"🔒 <b>PDF e EPUB exclusivos para assinantes do {brand}</b>\n\n"
+        f"🔒 <b>Conteudo exclusivo para assinantes do {brand}</b>\n\n"
         f"» <b>Obra:</b> <i>{title}</i>\n\n"
-        "A leitura pelo WebApp continua normal. Para baixar capitulos em PDF ou EPUB, "
-        "ative um plano abaixo. Quando a Cakto aprovar, o bot libera seu ID automaticamente."
+        "A leitura offline em PDF e EPUB esta bloqueada aqui no bot.\n\n"
+        "Escolha um plano abaixo. Assim que a Cakto aprovar o pagamento, "
+        "o bot libera seu ID automaticamente."
     )
 
 
-def _offline_locked_keyboard(bundle: dict, user_id: int | None) -> InlineKeyboardMarkup:
-    rows = [[InlineKeyboardButton(option["label"], url=option["url"])] for option in get_checkout_options(user_id)]
+def _offline_locked_keyboard(bundle: dict, user_id: int | None) -> InlineKeyboardMarkup | None:
+    options = get_checkout_options(user_id)
     title_id = str(bundle.get("title_id") or "").strip()
-    if title_id:
-        rows.append([InlineKeyboardButton("🔄 Verificar depois", callback_data=f"nv|offline|{title_id}")])
-        rows.append([InlineKeyboardButton("🔙 Voltar para a obra", callback_data=f"nv|title|{title_id}")])
-    rows.append([InlineKeyboardButton("Suporte", url=SUPPORT_BOT_URL)])
+    if options:
+        rows = [[InlineKeyboardButton(option["label"], url=option["url"])] for option in options]
+        if title_id:
+            rows.append([InlineKeyboardButton("🔄 Ja paguei / verificar", callback_data=f"nv|paycheck|{title_id}")])
+        rows.append([InlineKeyboardButton("🛟 Suporte", url=SUPPORT_BOT_URL)])
+        return InlineKeyboardMarkup(rows)
+
+    subscribe_url = _normalize_url(PDF_BULK_SUBSCRIBE_URL)
+    if not subscribe_url:
+        if title_id:
+            return InlineKeyboardMarkup(
+                [
+                    [InlineKeyboardButton("🔄 Ja paguei / verificar", callback_data=f"nv|paycheck|{title_id}")],
+                    [InlineKeyboardButton("🛟 Suporte", url=SUPPORT_BOT_URL)],
+                ]
+            )
+        return None
+
+    rows = [
+        [InlineKeyboardButton(f"✨ Assinar {BOT_BRAND or 'Novels Baltigo'}", url=subscribe_url)],
+        [InlineKeyboardButton("🛟 Suporte", url=SUPPORT_BOT_URL)],
+    ]
     return InlineKeyboardMarkup(rows)
+
+
+async def _send_offline_locked(target, bundle: dict, user_id: int | None) -> None:
+    text = _offline_locked_text(bundle)
+    keyboard = _offline_locked_keyboard(bundle, user_id)
+    message = getattr(target, "message", None)
+    if message:
+        try:
+            await message.reply_text(
+                text,
+                parse_mode="HTML",
+                reply_markup=keyboard,
+                disable_web_page_preview=True,
+            )
+            return
+        except Exception:
+            pass
+
+    try:
+        await target.reply_text(
+            text,
+            parse_mode="HTML",
+            reply_markup=keyboard,
+            disable_web_page_preview=True,
+        )
+    except Exception:
+        pass
 
 
 def _offline_chapters_text(bundle: dict, page: int, total_items: int) -> str:
@@ -771,16 +845,8 @@ async def send_chapters_page(target, context: ContextTypes.DEFAULT_TYPE, title_i
 
 async def send_offline_panel(target, context: ContextTypes.DEFAULT_TYPE, title_id: str, user_id: int | None, *, edit: bool):
     bundle = get_cached_novel_bundle(title_id) or await get_novel_bundle(title_id)
-    if not is_offline_user_allowed(user_id):
-        panel_message = await _render_panel(
-            target,
-            _offline_locked_text(bundle),
-            _offline_locked_keyboard(bundle, user_id),
-            _pick_bundle_image(bundle),
-            edit=edit,
-        )
-        if panel_message:
-            _set_panel_state(panel_message.chat.id, panel_message.message_id, "offline_locked", bundle["title_id"])
+    if not can_use_offline(user_id):
+        await _send_offline_locked(target, bundle, user_id)
         return
 
     await send_offline_chapters_page(target, context, title_id, 1, user_id, edit=edit)
@@ -796,16 +862,8 @@ async def send_offline_chapters_page(
     edit: bool,
 ):
     bundle = get_cached_novel_bundle(title_id) or await get_novel_bundle(title_id)
-    if not is_offline_user_allowed(user_id):
-        panel_message = await _render_panel(
-            target,
-            _offline_locked_text(bundle),
-            _offline_locked_keyboard(bundle, user_id),
-            _pick_bundle_image(bundle),
-            edit=edit,
-        )
-        if panel_message:
-            _set_panel_state(panel_message.chat.id, panel_message.message_id, "offline_locked", bundle["title_id"])
+    if not can_use_offline(user_id):
+        await _send_offline_locked(target, bundle, user_id)
         return
 
     chapters = _ordered_chapters(bundle)
@@ -841,16 +899,8 @@ async def send_offline_chapter_panel(
     if chapter.get("title_id"):
         bundle = get_cached_novel_bundle(chapter["title_id"]) or await get_novel_bundle(chapter["title_id"])
 
-    if not is_offline_user_allowed(user_id):
-        panel_message = await _render_panel(
-            target,
-            _offline_locked_text(bundle or chapter),
-            _offline_locked_keyboard(bundle or chapter, user_id),
-            _pick_bundle_image(bundle),
-            edit=edit,
-        )
-        if panel_message:
-            _set_panel_state(panel_message.chat.id, panel_message.message_id, "offline_locked", chapter.get("title_id") or "")
+    if not can_use_offline(user_id):
+        await _send_offline_locked(target, bundle or chapter, user_id)
         return
 
     adjacent_refs = [
@@ -1097,28 +1147,22 @@ async def callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
                 if action == "offline" and len(parts) >= 3:
                     await _safe_answer_query(query)
-                    if is_offline_user_allowed(user_id):
+                    if can_use_offline(user_id):
                         await _show_loading_markup(query, "⏳ Carregando offline")
-                    else:
-                        await _show_loading_markup(query, "🔒 Plano offline")
                     await send_offline_panel(query, context, parts[2], user_id, edit=True)
                     return
 
                 if action == "offchap" and len(parts) >= 4:
                     await _safe_answer_query(query)
-                    if is_offline_user_allowed(user_id):
+                    if can_use_offline(user_id):
                         await _show_loading_markup(query, "⏳ Carregando capitulos")
-                    else:
-                        await _show_loading_markup(query, "🔒 Plano offline")
                     await send_offline_chapters_page(query, context, parts[2], int(parts[3]), user_id, edit=True)
                     return
 
                 if action == "offread" and len(parts) >= 3:
                     await _safe_answer_query(query)
-                    if is_offline_user_allowed(user_id):
+                    if can_use_offline(user_id):
                         await _show_loading_markup(query, "⏳ Abrindo capitulo offline")
-                    else:
-                        await _show_loading_markup(query, "🔒 Plano offline")
                     await send_offline_chapter_panel(
                         query,
                         context,
@@ -1127,6 +1171,19 @@ async def callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         title_hint=parts[3] if len(parts) >= 4 else "",
                         page=int(parts[4]) if len(parts) >= 5 else 1,
                         edit=True,
+                    )
+                    return
+
+                if action == "paycheck" and len(parts) >= 3:
+                    if can_use_offline(user_id):
+                        await _safe_answer_query(query, "Plano encontrado. Liberando offline.", show_alert=False)
+                        await _show_loading_markup(query, "⏳ Carregando offline")
+                        await send_offline_panel(query, context, parts[2], user_id, edit=True)
+                        return
+                    await _safe_answer_query(
+                        query,
+                        "Ainda nao encontrei uma compra aprovada vinculada ao seu ID.",
+                        show_alert=True,
                     )
                     return
 
@@ -1160,9 +1217,8 @@ async def callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     return
 
                 if action == "pdf" and len(parts) >= 3:
-                    if not is_offline_user_allowed(user_id):
+                    if not can_use_offline(user_id):
                         await _safe_answer_query(query, "PDF e EPUB sao liberados para assinantes.", show_alert=True)
-                        await _show_loading_markup(query, "🔒 Plano offline")
                         await send_offline_chapter_panel(
                             query,
                             context,
@@ -1195,9 +1251,8 @@ async def callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     return
 
                 if action == "epub" and len(parts) >= 3:
-                    if not is_offline_user_allowed(user_id):
+                    if not can_use_offline(user_id):
                         await _safe_answer_query(query, "PDF e EPUB sao liberados para assinantes.", show_alert=True)
-                        await _show_loading_markup(query, "🔒 Plano offline")
                         await send_offline_chapter_panel(
                             query,
                             context,
@@ -1230,9 +1285,8 @@ async def callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     return
 
                 if action == "offpdf" and len(parts) >= 3:
-                    if not is_offline_user_allowed(user_id):
+                    if not can_use_offline(user_id):
                         await _safe_answer_query(query, "Funcao liberada para assinantes.", show_alert=True)
-                        await _show_loading_markup(query, "🔒 Plano offline")
                         await send_offline_chapter_panel(
                             query,
                             context,
@@ -1256,9 +1310,8 @@ async def callbacks(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     return
 
                 if action == "offepub" and len(parts) >= 3:
-                    if not is_offline_user_allowed(user_id):
+                    if not can_use_offline(user_id):
                         await _safe_answer_query(query, "Funcao liberada para assinantes.", show_alert=True)
-                        await _show_loading_markup(query, "🔒 Plano offline")
                         await send_offline_chapter_panel(
                             query,
                             context,
