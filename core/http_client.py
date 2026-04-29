@@ -56,6 +56,7 @@ async def get_http_client() -> httpx.AsyncClient:
                 timeout=_TIMEOUT,
                 limits=_LIMITS,
                 http2=_HTTP2_ENABLED,
+                trust_env=False,
             )
     return _CLIENT
 
