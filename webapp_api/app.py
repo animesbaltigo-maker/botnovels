@@ -27,6 +27,7 @@ from config import (
 )
 from services.cakto_gateway import extract_webhook_secret_values, process_cakto_webhook
 from services.centralnovel_client import (
+    get_blog_posts,
     get_cached_chapter_payload,
     get_cached_novel_bundle,
     get_chapter_payload,
@@ -74,6 +75,8 @@ class ProgressPayload(BaseModel):
     chapter_url: str = ""
     page_index: int = 1
     total_pages: int = 1
+    scroll_percent: float = 0
+    paragraph_count: int = 0
     cover_url: str = ""
     updated_at: int | float | str | None = None
 
@@ -307,15 +310,18 @@ def _public_history_item(user_id: str, item: dict[str, Any], progress: dict[str,
 
 async def _home_payload(limit: int) -> dict[str, Any]:
     async def producer() -> dict[str, Any]:
+        fetch_limit = max(limit, HOME_SECTION_LIMIT, 120)
         catalog, recent = await asyncio.gather(
-            get_series_catalog(limit=max(limit, HOME_SECTION_LIMIT)),
-            get_recent_updated_novels(limit=max(limit, HOME_SECTION_LIMIT)),
+            get_series_catalog(limit=fetch_limit),
+            get_recent_updated_novels(limit=max(limit, HOME_SECTION_LIMIT, 40)),
         )
         catalog_items = [_public_title_item(item) for item in catalog if item.get("title_id")]
         recent_items = [_public_title_item(item) for item in recent if item.get("title_id")]
         return {
             "featured": catalog_items[:limit],
             "popular": catalog_items[:limit],
+            "catalog": catalog_items,
+            "catalog_count": len(catalog_items),
             "recent_titles": recent_items[:limit],
             "latest_titles": recent_items[:limit],
         }
@@ -329,8 +335,16 @@ async def ping() -> dict[str, bool]:
 
 
 @app.get("/api/home")
-async def api_home(limit: int = Query(HOME_SECTION_LIMIT, ge=4, le=30)):
+async def api_home(limit: int = Query(max(HOME_SECTION_LIMIT, 60), ge=4, le=240)):
     return await _home_payload(limit)
+
+
+@app.get("/api/news")
+async def api_news(limit: int = Query(12, ge=1, le=40)):
+    async def producer() -> dict[str, Any]:
+        return {"items": await get_blog_posts(limit=limit)}
+
+    return await _cached("news", _HOME_TTL, producer, limit=limit)
 
 
 @app.get("/api/search")
