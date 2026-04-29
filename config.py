@@ -71,7 +71,7 @@ def _env_bool(name: str, default: bool) -> bool:
     return default
 
 
-BOT_TOKEN = os.getenv("BOT_TOKEN", "8625342322:AAFekc5f1I0vp2MIxlSpKW1uZM56nUu5qok").strip()
+BOT_TOKEN=8625342322:AAFekc5f1I0vp2MIxlSpKW1uZM56nUu5qok
 BOT_USERNAME = os.getenv("BOT_USERNAME", "NovelsBrasil_Bot").strip().lstrip("@")
 BOT_BRAND = os.getenv("BOT_BRAND", "Novels Baltigo").strip() or "Novels Baltigo"
 WEBAPP_BASE_URL = os.getenv("WEBAPP_BASE_URL", "").strip().rstrip("/")
