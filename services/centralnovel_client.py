@@ -35,6 +35,7 @@ from core.http_client import get_http_client
 BASE_URL = CATALOG_SITE_BASE.rstrip("/")
 ARCHIVE_URL = f"{BASE_URL}/series/list-mode/"
 RECENT_UPDATES_URL = f"{BASE_URL}/series/?status=&type=&order=update"
+BLOG_URL = f"{BASE_URL}/blog/"
 BROWSER_TIMEOUT_MS = 25000
 HTTP_TIMEOUT_SECONDS = max(10, HTTP_TIMEOUT)
 SEARCH_TTL = max(900, API_CACHE_TTL_SECONDS)
@@ -113,6 +114,20 @@ def _absolute_url(value: str) -> str:
     if not text:
         return ""
     return urljoin(f"{BASE_URL}/", text)
+
+
+def _image_from_tag(img: Tag | None) -> str:
+    if not img:
+        return ""
+    for attr in ("data-src", "data-lazy-src", "data-original", "src"):
+        value = _clean(img.get(attr))
+        if value:
+            return _absolute_url(value)
+    srcset = _clean(img.get("srcset") or img.get("data-srcset") or "")
+    if srcset:
+        first = srcset.split(",", 1)[0].strip().split(" ", 1)[0]
+        return _absolute_url(first)
+    return ""
 
 
 def _key_from_value(value: str) -> str:
@@ -378,8 +393,15 @@ def _parse_series_archive(html_text: str) -> list[dict[str, Any]]:
             continue
 
         container_text = _clean(container.get_text("\n", strip=True))
-        img = container.find("img")
-        cover_url = _absolute_url(img.get("src") or img.get("data-src") or "") if img else ""
+        img = container.find("img") or anchor.find("img")
+        if not img:
+            for parent in container.parents:
+                if not isinstance(parent, Tag):
+                    continue
+                img = parent.find("img")
+                if img or parent.name in {"article", "li"}:
+                    break
+        cover_url = _image_from_tag(img)
         latest_match = re.search(
             r"(?:Vol\.\s*\d+\s*)?Cap\.\s*([0-9]+(?:\.[0-9]+)?)",
             container_text,
@@ -413,6 +435,82 @@ def _parse_series_archive(html_text: str) -> list[dict[str, Any]]:
         )
 
     return results
+
+
+def _parse_blog_posts(html_text: str) -> list[dict[str, Any]]:
+    soup = BeautifulSoup(html_text, "html.parser")
+    seen: set[str] = set()
+    results: list[dict[str, Any]] = []
+    candidates = soup.select("article, .blogbox, .post, .hentry")
+
+    if not candidates:
+        candidates = [node for node in soup.find_all(["div", "li"]) if node.find("a", href=True)]
+
+    for node in candidates:
+        if not isinstance(node, Tag):
+            continue
+        link = (
+            node.select_one(".entry-title a[href], h1 a[href], h2 a[href], h3 a[href]")
+            or node.find("a", href=True)
+        )
+        if not link:
+            continue
+        href = _absolute_url(link.get("href"))
+        path = urlparse(href).path.strip("/")
+        if not href or href in seen or not path or path in {"blog", "blog/"}:
+            continue
+        if "/series/" in href or "capitulo" in path.lower():
+            continue
+
+        title = _clean_tag_text(link.get_text(" ", strip=True) or link.get("title") or "")
+        if not title:
+            img_for_title = link.find("img")
+            title = _clean_tag_text(img_for_title.get("alt") or img_for_title.get("title") or "") if img_for_title else ""
+        if not title or len(title) < 3:
+            continue
+
+        image_url = _image_from_tag(node.find("img"))
+        excerpt_node = node.select_one(".entry-content p, .excerpt, .blog-excerpt, p")
+        excerpt = _clean(excerpt_node.get_text(" ", strip=True) if excerpt_node else "")
+        time_node = node.find("time")
+        published_at = ""
+        if time_node:
+            published_at = _clean(time_node.get("datetime") or time_node.get_text(" ", strip=True))
+        author_node = node.select_one(".author .fn, .byline .fn, .fn")
+        author = _clean(author_node.get_text(" ", strip=True) if author_node else "")
+
+        seen.add(href)
+        results.append(
+            {
+                "title": title,
+                "url": href,
+                "image_url": image_url,
+                "excerpt": excerpt,
+                "published_at": published_at,
+                "author": author,
+            }
+        )
+
+    return results
+
+
+def _merge_series_items(*groups: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    merged: dict[str, dict[str, Any]] = {}
+    order: list[str] = []
+    for group in groups:
+        for item in group:
+            key = _clean(item.get("title_id") or item.get("novel_id") or item.get("source_url"))
+            if not key:
+                continue
+            if key not in merged:
+                merged[key] = dict(item)
+                order.append(key)
+                continue
+            current = merged[key]
+            for field in ("cover_url", "banner_url", "status", "latest_chapter", "source_url"):
+                if item.get(field) and not current.get(field):
+                    current[field] = item[field]
+    return [merged[key] for key in order]
 
 
 def _search_score(query: str, title: str) -> tuple[int, int]:
@@ -767,11 +865,21 @@ def _parse_chapter_page(html_text: str, url: str) -> dict[str, Any]:
 
 
 async def get_series_catalog(limit: int = 0) -> list[dict[str, Any]]:
-    cache_key = "series-archive"
+    cache_key = f"series-catalog:{max(0, int(limit or 0))}"
 
     async def _load():
-        html_text = await _fetch_html(ARCHIVE_URL)
-        return _parse_series_archive(html_text)
+        desired = max(120, int(limit or 240))
+        page_count = min(6, max(2, (desired // 50) + 2))
+        urls = [RECENT_UPDATES_URL]
+        urls.extend(f"{BASE_URL}/series/page/{page}/?status=&type=&order=update" for page in range(2, page_count + 1))
+        urls.append(ARCHIVE_URL)
+        html_pages = await asyncio.gather(*(_fetch_html(url) for url in urls), return_exceptions=True)
+        groups: list[list[dict[str, Any]]] = []
+        for html_text in html_pages:
+            if isinstance(html_text, Exception):
+                continue
+            groups.append(_parse_series_archive(html_text))
+        return _merge_series_items(*groups)
 
     items = await _dedup_fetch(cache_key, HOME_TTL, _load)
     if limit:
@@ -785,6 +893,19 @@ async def get_recent_updated_novels(limit: int = 0) -> list[dict[str, Any]]:
     async def _load():
         html_text = await _fetch_html(RECENT_UPDATES_URL)
         return _parse_series_archive(html_text)
+
+    items = await _dedup_fetch(cache_key, RECENT_TTL, _load)
+    if limit:
+        return list(items[: max(1, int(limit))])
+    return list(items)
+
+
+async def get_blog_posts(limit: int = 0) -> list[dict[str, Any]]:
+    cache_key = "blog-posts"
+
+    async def _load():
+        html_text = await _fetch_html(BLOG_URL)
+        return _parse_blog_posts(html_text)
 
     items = await _dedup_fetch(cache_key, RECENT_TTL, _load)
     if limit:
