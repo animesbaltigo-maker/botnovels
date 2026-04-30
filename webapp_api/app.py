@@ -201,10 +201,13 @@ def _updated_at_ms(value: Any) -> int:
 
 
 def _public_chapter(item: dict[str, Any] | None) -> dict[str, Any] | None:
-    if not item:
+    if not item or not isinstance(item, dict):
+        return None
+    chapter_id = str(item.get("chapter_id") or item.get("id") or "").strip()
+    if not chapter_id:
         return None
     return {
-        "chapter_id": item.get("chapter_id") or "",
+        "chapter_id": chapter_id,
         "chapter_number": str(item.get("chapter_number") or ""),
         "chapter_title": item.get("chapter_title") or item.get("title") or "",
         "chapter_url": item.get("chapter_url") or "",
@@ -219,6 +222,8 @@ def _latest_chapter_value(item: dict[str, Any]) -> str:
 
 
 def _public_title_item(item: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(item, dict):
+        item = {}
     latest = item.get("latest_chapter")
     latest_id = ""
     if isinstance(latest, dict):
@@ -226,24 +231,30 @@ def _public_title_item(item: dict[str, Any]) -> dict[str, Any]:
 
     title = item.get("display_title") or item.get("title") or "Novel"
     return {
-        "title_id": item.get("title_id") or "",
-        "title": title,
-        "display_title": title,
-        "description": item.get("description") or "",
-        "cover_url": item.get("cover_url") or item.get("banner_url") or "",
-        "background_url": item.get("banner_url") or item.get("cover_url") or "",
-        "status": item.get("status") or "",
-        "type": item.get("type") or "Novel",
-        "author": item.get("author") or "",
-        "genres": item.get("genres") or [],
-        "total_chapters": item.get("total_chapters") or "",
+        "title_id": str(item.get("title_id") or ""),
+        "title": str(title or "Novel"),
+        "display_title": str(title or "Novel"),
+        "description": str(item.get("description") or ""),
+        "cover_url": str(item.get("cover_url") or item.get("banner_url") or ""),
+        "background_url": str(item.get("banner_url") or item.get("cover_url") or ""),
+        "status": str(item.get("status") or ""),
+        "type": str(item.get("type") or "Novel"),
+        "author": str(item.get("author") or ""),
+        "genres": item.get("genres") if isinstance(item.get("genres"), list) else [],
+        "total_chapters": str(item.get("total_chapters") or ""),
         "latest_chapter": _latest_chapter_value(item),
         "latest_chapter_id": latest_id or str(item.get("latest_chapter_id") or item.get("chapter_id") or ""),
     }
 
 
 def _public_title_bundle(bundle: dict[str, Any], user_id: str = "") -> dict[str, Any]:
-    chapters = [_public_chapter(item) for item in (bundle.get("chapters") or []) if item.get("chapter_id")]
+    if not isinstance(bundle, dict):
+        bundle = {}
+    chapters = [
+        chapter
+        for chapter in (_public_chapter(item) for item in (bundle.get("chapters") or []) if isinstance(item, dict))
+        if chapter
+    ]
     latest = _public_chapter(bundle.get("latest_chapter"))
     first = _public_chapter(bundle.get("first_chapter"))
     title_id = bundle.get("title_id") or ""
@@ -263,15 +274,17 @@ def _public_title_bundle(bundle: dict[str, Any], user_id: str = "") -> dict[str,
 
 
 def _public_reader_payload(chapter: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(chapter, dict):
+        chapter = {}
     paragraphs = [str(item).strip() for item in (chapter.get("paragraphs") or []) if str(item or "").strip()]
     return {
-        "title_id": chapter.get("title_id") or "",
-        "title": chapter.get("title") or "Novel",
-        "chapter_id": chapter.get("chapter_id") or "",
+        "title_id": str(chapter.get("title_id") or ""),
+        "title": str(chapter.get("title") or "Novel"),
+        "chapter_id": str(chapter.get("chapter_id") or ""),
         "chapter_number": str(chapter.get("chapter_number") or ""),
-        "chapter_title": chapter.get("chapter_title") or "",
-        "chapter_url": chapter.get("chapter_url") or "",
-        "cover_url": chapter.get("cover_url") or "",
+        "chapter_title": str(chapter.get("chapter_title") or ""),
+        "chapter_url": str(chapter.get("chapter_url") or ""),
+        "cover_url": str(chapter.get("cover_url") or ""),
         "paragraph_count": len(paragraphs),
         "paragraphs": paragraphs,
         "previous_chapter": _public_chapter(chapter.get("previous_chapter")),
