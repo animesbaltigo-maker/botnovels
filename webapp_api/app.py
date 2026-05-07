@@ -35,9 +35,10 @@ from services.centralnovel_client import (
     get_recent_updated_novels,
     get_series_catalog,
     prefetch_chapter_payloads,
+    schedule_warm_catalog_cache,
     search_novels,
 )
-from services.metrics import get_last_read_entry, get_recently_read, mark_chapter_read
+from services.metrics import get_last_read_entry, get_recently_read, init_metrics_db, mark_chapter_read
 from services.offline_access import get_offline_access, init_offline_access_db
 from services.profile_store import (
     list_user_favorites,
@@ -64,6 +65,7 @@ app.add_middleware(
 )
 
 init_offline_access_db()
+init_metrics_db()
 
 
 class ProgressPayload(BaseModel):
@@ -111,10 +113,17 @@ class FavoritesSyncPayload(BaseModel):
 
 _CACHE: dict[str, dict[str, Any]] = {}
 _CACHE_LOCK = asyncio.Lock()
+_INFLIGHT: dict[str, asyncio.Task] = {}
 _HOME_TTL = 40
 _TITLE_TTL = 120
 _CHAPTER_TTL = 180
 _SEARCH_TTL = 30
+_CACHE_MAX_ENTRIES = 600
+
+
+@app.on_event("startup")
+async def _startup_warm_cache() -> None:
+    schedule_warm_catalog_cache()
 
 
 def _now() -> float:
@@ -147,6 +156,13 @@ async def _cache_get(namespace: str, ttl: int, **kwargs: Any) -> Any | None:
 async def _cache_set(namespace: str, value: Any, ttl: int, **kwargs: Any) -> Any:
     key = _cache_key(namespace, **kwargs)
     async with _CACHE_LOCK:
+        if len(_CACHE) >= _CACHE_MAX_ENTRIES:
+            expired = [item_key for item_key, item in _CACHE.items() if item["expires_at"] < _now()]
+            for item_key in expired:
+                _CACHE.pop(item_key, None)
+            while len(_CACHE) >= _CACHE_MAX_ENTRIES:
+                oldest_key = min(_CACHE, key=lambda item_key: _CACHE[item_key]["expires_at"])
+                _CACHE.pop(oldest_key, None)
         _CACHE[key] = {"value": value, "expires_at": _now() + ttl}
     return value
 
@@ -155,7 +171,22 @@ async def _cached(namespace: str, ttl: int, producer, **kwargs: Any) -> Any:
     cached = await _cache_get(namespace, ttl, **kwargs)
     if cached is not None:
         return cached
-    value = await producer()
+
+    key = _cache_key(namespace, **kwargs)
+    async with _CACHE_LOCK:
+        task = _INFLIGHT.get(key)
+        if task is None:
+            task = asyncio.create_task(producer())
+            _INFLIGHT[key] = task
+
+    try:
+        value = await task
+    finally:
+        if task.done():
+            async with _CACHE_LOCK:
+                if _INFLIGHT.get(key) is task:
+                    _INFLIGHT.pop(key, None)
+
     return await _cache_set(namespace, value, ttl, **kwargs)
 
 
@@ -372,7 +403,10 @@ async def api_search(q: str = Query("", min_length=1), limit: int = Query(12, ge
 @app.get("/api/title/{title_id}")
 async def api_title(title_id: str, user_id: str = Query("")):
     try:
-        bundle = get_cached_novel_bundle(title_id) or await get_novel_bundle(title_id)
+        async def producer() -> dict[str, Any]:
+            return get_cached_novel_bundle(title_id) or await get_novel_bundle(title_id)
+
+        bundle = await _cached("title_bundle", _TITLE_TTL, producer, title_id=title_id)
         return _public_title_bundle(bundle, user_id=user_id)
     except Exception as error:
         raise HTTPException(status_code=404, detail=str(error)) from error
@@ -380,7 +414,10 @@ async def api_title(title_id: str, user_id: str = Query("")):
 
 @app.get("/api/title/{title_id}/chapters")
 async def api_title_chapters(title_id: str):
-    bundle = get_cached_novel_bundle(title_id) or await get_novel_bundle(title_id)
+    async def producer() -> dict[str, Any]:
+        return get_cached_novel_bundle(title_id) or await get_novel_bundle(title_id)
+
+    bundle = await _cached("title_chapters", _TITLE_TTL, producer, title_id=title_id)
     return {
         "title_id": bundle.get("title_id") or title_id,
         "title": bundle.get("title") or "",
@@ -391,7 +428,10 @@ async def api_title_chapters(title_id: str):
 @app.get("/api/chapter/{chapter_id}")
 async def api_chapter(chapter_id: str):
     try:
-        chapter = get_cached_chapter_payload(chapter_id) or await get_chapter_payload(chapter_id)
+        async def producer() -> dict[str, Any]:
+            return get_cached_chapter_payload(chapter_id) or await get_chapter_payload(chapter_id)
+
+        chapter = await _cached("chapter", _CHAPTER_TTL, producer, chapter_id=chapter_id)
         refs = [
             (chapter.get("previous_chapter") or {}).get("chapter_id") or "",
             (chapter.get("next_chapter") or {}).get("chapter_id") or "",
