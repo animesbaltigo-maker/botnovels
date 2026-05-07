@@ -3,11 +3,11 @@ import html
 import re
 import time
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, WebAppInfo
 from telegram.error import TelegramError
 from telegram.ext import ContextTypes
 
-from config import BOT_BRAND, BOT_USERNAME, PROMO_BANNER_URL
+from config import BOT_BRAND, BOT_USERNAME, PROMO_BANNER_URL, WEBAPP_BASE_URL
 from core.background import fire_and_forget_sync, run_sync
 from handlers.novel_callbacks import send_chapter_panel, send_novel_panel
 from services.centralnovel_client import get_cached_home_snapshot, schedule_warm_catalog_cache
@@ -23,6 +23,7 @@ from utils.gatekeeper import ensure_channel_membership
 
 START_COOLDOWN = 1.0
 START_DEEP_LINK_TTL = 8.0
+START_OPEN_TIMEOUT = 28.0
 
 _START_USER_LOCKS: dict[int, asyncio.Lock] = {}
 _START_INFLIGHT: dict[str, float] = {}
@@ -146,6 +147,42 @@ async def _safe_delete_message(message) -> None:
         pass
 
 
+async def _safe_edit_message(message, text: str) -> None:
+    if not message:
+        return
+    try:
+        await message.edit_text(text, parse_mode="HTML")
+    except TelegramError:
+        pass
+    except Exception:
+        pass
+
+
+async def _send_start_loading(message, *, kind: str):
+    label = "capitulo" if kind == "chapter" else "obra"
+    try:
+        return await message.reply_text(
+            f"<b>Abrindo {label}...</b>\n\nUm instante, estou preparando a leitura.",
+            parse_mode="HTML",
+        )
+    except Exception:
+        return None
+
+
+def _miniapp_url(*, title_id: str = "", chapter_id: str = "", route: str = "home", user_id: int | None = None) -> str:
+    base = (WEBAPP_BASE_URL or "").rstrip("/")
+    if not base:
+        return ""
+    params = [f"route={route or 'home'}", "source=start"]
+    if title_id:
+        params.append(f"title_id={title_id}")
+    if chapter_id:
+        params.append(f"chapter_id={chapter_id}")
+    if user_id:
+        params.append(f"user_id={int(user_id)}")
+    return f"{base}/miniapp/index.html?{'&'.join(params)}"
+
+
 async def _handle_referral(arg: str, user, message) -> None:
     try:
         referrer_id = int(arg.split("_", 1)[1])
@@ -167,7 +204,13 @@ async def _send_welcome(message, first_name: str) -> None:
     featured = snapshot.get("featured") or []
     schedule_warm_catalog_cache()
 
-    keyboard_rows = []
+    user_id = getattr(getattr(message, "from_user", None), "id", None)
+    keyboard_rows: list[list[InlineKeyboardButton]] = []
+    webapp_home = _miniapp_url(route="home", user_id=user_id)
+    if webapp_home:
+        keyboard_rows.append([InlineKeyboardButton("Abrir biblioteca", web_app=WebAppInfo(url=webapp_home))])
+
+    keyboard_rows.append([InlineKeyboardButton("Buscar novel aqui", switch_inline_query_current_chat="")])
     if BOT_USERNAME:
         keyboard_rows.append(
             [
@@ -175,6 +218,13 @@ async def _send_welcome(message, first_name: str) -> None:
             ]
         )
 
+
+    for item in featured[:4]:
+        title_id = str(item.get("title_id") or "").strip()
+        title = str(item.get("title") or item.get("display_title") or "Novel").strip()
+        url = _miniapp_url(title_id=title_id, route="detail", user_id=user_id)
+        if title_id and url:
+            keyboard_rows.append([InlineKeyboardButton(f"Ler {title[:34]}", web_app=WebAppInfo(url=url))])
 
     text = (
         f"📖 <b>Bem-vindo ao {BOT_BRAND}!</b>\n\n"
@@ -185,6 +235,17 @@ async def _send_welcome(message, first_name: str) -> None:
         "• Escolha um capitulo\n"
         "• Leia pelo WebApp\n"
         "• Use /plano para liberar PDF e EPUB\n\n"
+    )
+
+    text = (
+        f"<b>{html.escape(BOT_BRAND)}</b>\n\n"
+        f"{html.escape(first_name or 'leitor')}, escolha uma novel, continue seu progresso e leia pelo WebApp "
+        "com fonte ajustavel, tema claro/escuro e historico.\n\n"
+        "<b>Como usar</b>\n"
+        "- Abra a biblioteca pelo botao abaixo\n"
+        "- Ou envie <code>/novel nome da obra</code>\n"
+        "- Toque em uma obra e escolha o capitulo\n"
+        "- Use <code>/plano</code> para liberar PDF e EPUB\n"
     )
 
     if keyboard_rows:
@@ -246,19 +307,41 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
             title_id = _extract_title_id(arg)
             if title_id:
-                await send_novel_panel(message, context, title_id, user.id, edit=False)
+                loading_msg = await _send_start_loading(message, kind="title")
+                try:
+                    await asyncio.wait_for(
+                        send_novel_panel(message, context, title_id, user.id, edit=False),
+                        timeout=START_OPEN_TIMEOUT,
+                    )
+                    await _safe_delete_message(loading_msg)
+                except asyncio.TimeoutError:
+                    await _safe_edit_message(loading_msg, "Demorou mais que o normal. Tente abrir de novo em alguns segundos.")
+                except Exception as error:
+                    print("ERRO START NOVEL:", repr(error))
+                    await _safe_edit_message(loading_msg, "Nao consegui abrir essa obra agora.")
                 return
 
             chapter_id = _extract_chapter_id(arg)
             if chapter_id:
-                await send_chapter_panel(
-                    message,
-                    context,
-                    chapter_id,
-                    user.id,
-                    edit=False,
-                    title_hint=_extract_chapter_title_hint(arg),
-                )
+                loading_msg = await _send_start_loading(message, kind="chapter")
+                try:
+                    await asyncio.wait_for(
+                        send_chapter_panel(
+                            message,
+                            context,
+                            chapter_id,
+                            user.id,
+                            edit=False,
+                            title_hint=_extract_chapter_title_hint(arg),
+                        ),
+                        timeout=START_OPEN_TIMEOUT,
+                    )
+                    await _safe_delete_message(loading_msg)
+                except asyncio.TimeoutError:
+                    await _safe_edit_message(loading_msg, "Demorou mais que o normal. Tente abrir de novo em alguns segundos.")
+                except Exception as error:
+                    print("ERRO START CAPITULO:", repr(error))
+                    await _safe_edit_message(loading_msg, "Nao consegui abrir esse capitulo agora.")
                 return
 
             await _send_welcome(message, user.first_name or "leitor")
