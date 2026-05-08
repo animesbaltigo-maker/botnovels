@@ -238,14 +238,12 @@ async def _send_welcome(message, first_name: str) -> None:
     )
 
     text = (
-        f"<b>{html.escape(BOT_BRAND)}</b>\n\n"
-        f"{html.escape(first_name or 'leitor')}, escolha uma novel, continue seu progresso e leia pelo WebApp "
-        "com fonte ajustavel, tema claro/escuro e historico.\n\n"
-        "<b>Como usar</b>\n"
-        "- Abra a biblioteca pelo botao abaixo\n"
-        "- Ou envie <code>/novel nome da obra</code>\n"
-        "- Toque em uma obra e escolha o capitulo\n"
-        "- Use <code>/plano</code> para liberar PDF e EPUB\n"
+        f"📖 <b>Bem-vindo ao {html.escape(BOT_BRAND)}, {html.escape(first_name or 'leitor')}!</b>\n\n"
+        "Escolha uma novel, abra capítulos e leia pelo WebApp com uma experiência feita para leitura.\n\n"
+        "<blockquote>• 🔎 Busque por <code>/novel nome da obra</code>\n"
+        "• 📖 Continue seu progresso\n"
+        "• 🌓 Leia com fonte ajustável e tema claro/escuro</blockquote>\n\n"
+        "<i>Toque em uma opção abaixo ou envie o nome da novel.</i>"
     )
 
     if keyboard_rows:
