@@ -19,6 +19,8 @@ from handlers.broadcast import (
     broadcast_message_router,
     broadcast_public_callbacks,
 )
+from handlers.control_block import control_block_callback_guard, control_block_message_guard
+from services.control_agent import start_control_agent, stop_control_agent
 from handlers.help import ajuda
 from handlers.metricas import metricas, metricas_limpar
 from handlers.novel import novel_command
@@ -54,11 +56,13 @@ async def _delayed_warm_catalog() -> None:
 
 
 async def post_init(app: Application) -> None:
+    await start_control_agent(app)
     await start_pdf_workers(app)
     app.create_task(_delayed_warm_catalog())
 
 
 async def post_shutdown(app: Application) -> None:
+    await stop_control_agent(app)
     await stop_pdf_workers(app)
     await close_http_client()
 
@@ -113,6 +117,9 @@ def main() -> None:
         .post_shutdown(post_shutdown)
         .build()
     )
+
+    app.add_handler(CallbackQueryHandler(control_block_callback_guard, pattern=r".*"), group=-100)
+    app.add_handler(MessageHandler(filters.ALL, control_block_message_guard), group=-100)
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("novel", novel_command))
