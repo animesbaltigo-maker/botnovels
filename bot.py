@@ -17,6 +17,7 @@ from handlers.broadcast import (
     broadcast_callbacks,
     broadcast_command,
     broadcast_message_router,
+    broadcast_public_callbacks,
 )
 from handlers.help import ajuda
 from handlers.metricas import metricas, metricas_limpar
@@ -131,6 +132,7 @@ def main() -> None:
     app.add_handler(CommandHandler("metricaslimpar", metricas_limpar))
 
     app.add_handler(CallbackQueryHandler(broadcast_callbacks, pattern=r"^bc\|"))
+    app.add_handler(CallbackQueryHandler(broadcast_public_callbacks, pattern=r"^bc_public\|"))
     app.add_handler(CallbackQueryHandler(referral_button, pattern=r"^noop_indicar$"))
     app.add_handler(CallbackQueryHandler(callbacks, pattern=r"^nv\|"))
 
