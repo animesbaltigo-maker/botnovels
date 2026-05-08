@@ -7,7 +7,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, WebAppI
 from telegram.error import TelegramError
 from telegram.ext import ContextTypes
 
-from config import BOT_BRAND, BOT_USERNAME, PROMO_BANNER_URL, WEBAPP_BASE_URL
+from config import BALTIGO_UNIVERSE_WEBAPP_URL, BOT_BRAND, BOT_USERNAME, PROMO_BANNER_URL, WEBAPP_BASE_URL
 from core.background import fire_and_forget_sync, run_sync
 from handlers.novel_callbacks import send_chapter_panel, send_novel_panel
 from services.centralnovel_client import get_cached_home_snapshot, schedule_warm_catalog_cache
@@ -225,6 +225,10 @@ async def _send_welcome(message, first_name: str) -> None:
         url = _miniapp_url(title_id=title_id, route="detail", user_id=user_id)
         if title_id and url:
             keyboard_rows.append([InlineKeyboardButton(f"Ler {title[:34]}", web_app=WebAppInfo(url=url))])
+
+    keyboard_rows.append(
+        [InlineKeyboardButton("⚔️ Universo Baltigo", web_app=WebAppInfo(url=BALTIGO_UNIVERSE_WEBAPP_URL))]
+    )
 
     text = (
         f"📖 <b>Bem-vindo ao {BOT_BRAND}!</b>\n\n"

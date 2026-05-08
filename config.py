@@ -114,7 +114,11 @@ AUTO_POST_LIMIT = _env_int("AUTO_POST_LIMIT", 8)
 
 PROMO_BANNER_URL = os.getenv(
     "PROMO_BANNER_URL",
-    "https://photo.chelpbot.me/AgACAgEAAxkBaVoTGGnNi8MFSYpTv6T5RQ1sZrFGXlCTAALEC2sbbQtxRpemdjcbCk3sAQADAgADeQADOgQ/photo.jpg",
+    "https://photo.chelpbot.me/AgACAgEAAxkBa-vIXGn-ZJZw4vhGoVQUxXTaJl6FddVrAALeC2sb2U34RwfLHqIKoHPPAQADAgADeQADOwQ/photo.jpg",
+).strip()
+BALTIGO_UNIVERSE_WEBAPP_URL = os.getenv(
+    "BALTIGO_UNIVERSE_WEBAPP_URL",
+    "https://rough-double-remarkable-north.trycloudflare.com/miniapp/bots/index.html",
 ).strip()
 TELEGRAPH_AUTHOR = os.getenv("TELEGRAPH_AUTHOR", BOT_BRAND).strip() or BOT_BRAND
 DISTRIBUTION_TAG = os.getenv("DISTRIBUTION_TAG", "@NovelsBrasil").strip() or "@NovelsBrasil"
