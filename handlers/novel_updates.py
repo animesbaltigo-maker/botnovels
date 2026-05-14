@@ -91,7 +91,7 @@ def _caption(item: dict) -> str:
     lines = [
         f"📜 <b>{title}</b>",
         "",
-        f"» <blockquote><b>Capitulo:</b> <i>{chapter_number}</i>",
+        f"<blockquote>» <b>Capitulo:</b> <i>{chapter_number}</i>",
         f"» <b>Status:</b> <i>{status}</i>",
         f"» <b>Gênero(s):</b> <i>{genres}</i>",
         "</blockquote>",
