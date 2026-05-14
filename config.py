@@ -91,7 +91,7 @@ REQUIRED_CHANNELS = _env_str_list(
     "REQUIRED_CHANNELS",
     "@AtualizacoesOn,@NovelsBrasil,@QG_BALTIGO",
 )
-REQUIRED_CHANNEL_URL = os.getenv("REQUIRED_CHANNEL_FOLDER_URL", "https://t.me/addlist/alMKYepCIZBiZGFh").strip()
+REQUIRED_CHANNEL_URL = os.getenv("REQUIRED_CHANNEL_URL", "https://t.me/NovelsBrasil").strip()
 
 CANAL_POSTAGEM = os.getenv("CANAL_POSTAGEM", "@NovelsBrasil").strip()
 CANAL_POSTAGEM_NOVELS = (
