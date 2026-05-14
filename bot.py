@@ -3,6 +3,7 @@ import asyncio
 from telegram import Update
 from telegram.ext import (
     Application,
+    ApplicationHandlerStop,
     CallbackQueryHandler,
     CommandHandler,
     ContextTypes,
@@ -34,6 +35,7 @@ from services.centralnovel_client import warm_catalog_cache
 from services.metrics import init_metrics_db
 from services.offline_access import init_offline_access_db
 from services.referral_db import init_referral_db
+from utils.gatekeeper import ensure_channel_membership
 
 init_metrics_db()
 init_offline_access_db()
@@ -82,6 +84,11 @@ async def warm_catalog_job(context: ContextTypes.DEFAULT_TYPE) -> None:
     await warm_catalog_cache()
 
 
+async def required_channel_guard(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not await ensure_channel_membership(update, context):
+        raise ApplicationHandlerStop
+
+
 def _register_jobs(app: Application) -> None:
     if not app.job_queue:
         return
@@ -120,6 +127,7 @@ def main() -> None:
 
     app.add_handler(CallbackQueryHandler(control_block_callback_guard, pattern=r".*"), group=-100)
     app.add_handler(MessageHandler(filters.ALL, control_block_message_guard), group=-100)
+    app.add_handler(MessageHandler(filters.COMMAND, required_channel_guard), group=-90)
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("novel", novel_command))
