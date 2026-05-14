@@ -20,6 +20,7 @@ from services.centralnovel_client import (
     get_novel_bundle,
     get_recent_updated_novels,
 )
+from services.novel_update_mockup import render_novel_update_mockup
 
 POSTED_JSON_PATH = Path(DATA_DIR) / "novel_capitulos_postados.json"
 
@@ -55,6 +56,23 @@ def _display_title(item: dict) -> str:
     return item.get("display_title") or item.get("title") or "Novel"
 
 
+def _genre_label(values) -> str:
+    genres: list[str] = []
+    seen: set[str] = set()
+    for raw in values or []:
+        if isinstance(raw, dict):
+            raw = raw.get("name") or raw.get("title") or raw.get("label") or ""
+        genre = str(raw or "").strip().lstrip("#")
+        key = genre.lower()
+        if not genre or key in seen:
+            continue
+        seen.add(key)
+        genres.append(genre)
+        if len(genres) >= 6:
+            break
+    return ", ".join(genres) if genres else "Nao informado"
+
+
 def _post_key(item: dict) -> str:
     latest = item.get("latest_chapter") or {}
     chapter_id = str(latest.get("chapter_id") or item.get("chapter_id") or "").strip()
@@ -68,20 +86,19 @@ def _caption(item: dict) -> str:
     latest = item.get("latest_chapter") or {}
     chapter_number = html.escape(str(latest.get("chapter_number") or item.get("latest_chapter_number") or "?"))
     status = html.escape(str(item.get("status") or "Atualizado"))
-    updated_at = html.escape(str(item.get("updated_at") or "agora ha pouco"))
-    total_chapters = html.escape(str(item.get("total_chapters") or "?"))
-    brand = html.escape(BOT_BRAND)
+    genres = html.escape(_genre_label(item.get("genres") or []))
 
     lines = [
-        "🆕 <b>{title}</b>",
+        f"📜 <b>{title}</b>",
         "",
+        "<blockquote>",
         f"» <b>Capitulo:</b> <i>{chapter_number}</i>",
         f"» <b>Status:</b> <i>{status}</i>",
+        f"» <b>Gênero(s):</b> <i>{genres}</i>",
+        "</blockquote>",
+        "",
+        "» <b>@AtualizacoesOn</b>",
     ]
-    if updated_at and updated_at != "agora ha pouco":
-        lines.append(f"» <b>Atualizado:</b> <i>{updated_at}</i>")
-
-    lines.extend(["", f"✨ <i>Abra no {brand} e continue a leitura.</i>"])
     return "\n".join(lines)
 
 
@@ -91,10 +108,10 @@ def _keyboard(item: dict) -> InlineKeyboardMarkup:
     title_id = str(item.get("title_id") or item.get("novel_id") or "").strip()
 
     rows: list[list[InlineKeyboardButton]] = []
-    if chapter_id:
-        rows.append([InlineKeyboardButton("📖 Ler capitulo", url=_deep_link(chapter_id, title_id))])
     if title_id:
-        rows.append([InlineKeyboardButton("📚 Abrir obra", url=_title_link(title_id))])
+        rows.append([InlineKeyboardButton("📜 Abrir novel", url=_title_link(title_id))])
+    elif chapter_id:
+        rows.append([InlineKeyboardButton("📜 Abrir novel", url=_deep_link(chapter_id, title_id))])
     return InlineKeyboardMarkup(rows)
 
 
@@ -122,6 +139,7 @@ async def _resolve_recent_item(item: dict) -> dict | None:
             "banner_url": bundle.get("banner_url") or bundle.get("cover_url") or item.get("banner_url") or "",
             "status": bundle.get("status") or item.get("status") or "",
             "updated_at": bundle.get("updated_at") or item.get("updated_at") or "",
+            "genres": bundle.get("genres") or item.get("genres") or [],
             "total_chapters": bundle.get("total_chapters") or item.get("total_chapters") or "",
             "latest_chapter": latest,
             "latest_chapter_number": latest.get("chapter_number") or item.get("latest_chapter") or "",
@@ -137,9 +155,10 @@ async def _send_recent_novel(bot, chat_id, item: dict) -> None:
 
     if cover:
         try:
+            photo = await render_novel_update_mockup(cover)
             await bot.send_photo(
                 chat_id=chat_id,
-                photo=cover,
+                photo=photo,
                 caption=caption,
                 parse_mode="HTML",
                 reply_markup=keyboard,
@@ -147,6 +166,17 @@ async def _send_recent_novel(bot, chat_id, item: dict) -> None:
             return
         except Exception as error:
             print("ERRO POST NOVEL CAP FOTO:", repr(error))
+            try:
+                await bot.send_photo(
+                    chat_id=chat_id,
+                    photo=cover,
+                    caption=caption,
+                    parse_mode="HTML",
+                    reply_markup=keyboard,
+                )
+                return
+            except Exception as fallback_error:
+                print("ERRO POST NOVEL CAP FOTO ORIGINAL:", repr(fallback_error))
 
     await bot.send_message(
         chat_id=chat_id,
