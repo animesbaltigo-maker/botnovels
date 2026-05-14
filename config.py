@@ -71,6 +71,11 @@ def _env_bool(name: str, default: bool) -> bool:
     return default
 
 
+def _env_str_list(name: str, default: str) -> list[str]:
+    raw = os.getenv(name, default).replace(";", ",")
+    return [item.strip() for item in raw.split(",") if item.strip()]
+
+
 BOT_TOKEN = os.getenv("BOT_TOKEN", "8625342322:AAFekc5f1I0vp2MIxlSpKW1uZM56nUu5qok").strip()
 BOT_USERNAME = os.getenv("BOT_USERNAME", "NovelsBrasil_Bot").strip().lstrip("@")
 BOT_BRAND = os.getenv("BOT_BRAND", "Novels Baltigo").strip() or "Novels Baltigo"
@@ -81,7 +86,11 @@ CATALOG_SITE_BASE = (
 ).rstrip("/")
 
 REQUIRED_CHANNEL = os.getenv("REQUIRED_CHANNEL", "@NovelsBrasil").strip()
-REQUIRED_CHANNEL_URL = os.getenv("REQUIRED_CHANNEL_URL", "https://t.me/NovelsBrasil").strip()
+REQUIRED_CHANNELS = _env_str_list(
+    "REQUIRED_CHANNELS",
+    "@AtualizacoesOn,@NovelsBrasil,@QG_BALTIGO",
+)
+REQUIRED_CHANNEL_URL = os.getenv("REQUIRED_CHANNEL_FOLDER_URL", "https://t.me/addlist/alMKYepCIZBiZGFh").strip()
 
 CANAL_POSTAGEM = os.getenv("CANAL_POSTAGEM", "@NovelsBrasil").strip()
 CANAL_POSTAGEM_NOVELS = (
