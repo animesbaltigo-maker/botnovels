@@ -42,6 +42,13 @@ def _normalize_text(value: str) -> str:
     return " ".join(value.split())
 
 
+def _tagify(value: str) -> str:
+    clean = " ".join(str(value or "").strip().replace("#", "").replace("-", " ").split())
+    if not clean:
+        return ""
+    return "#" + "".join(part[:1].upper() + part[1:] for part in clean.split())
+
+
 def _pick_best_candidate(query: str, results: list[dict]) -> dict | None:
     if not results:
         return None
@@ -67,18 +74,22 @@ def _pick_best_candidate(query: str, results: list[dict]) -> dict | None:
 def _build_caption(novel: dict) -> str:
     full_title = html.escape((novel.get("display_title") or novel.get("title") or "Sem título").upper())
     genres = novel.get("genres") or []
-    genres_text = ", ".join(f"#{genre}" for genre in genres[:4]) if genres else "N/A"
+    genres_text = " ".join(_tagify(str(genre)) for genre in genres[:6]) if genres else "N/A"
     genres_text = html.escape(genres_text)
     chapters = html.escape(str(novel.get("total_chapters") or "?"))
     status = html.escape(str(novel.get("status") or "N/A"))
+    work_type = html.escape(str(novel.get("type") or "Novel"))
+    author = html.escape(str(novel.get("author") or "N/A"))
     description = html.escape(_truncate_text(novel.get("description") or "", 320))
 
     return (
         f"📚 <b>{full_title}</b>\n\n"
-        f"<b>Gêneros:</b> <i>{genres_text}</i>\n"
-        f"<b>Capítulos:</b> <i>{chapters}</i>\n"
-        f"<b>Status:</b> <i>{status}</i>\n\n"
-        f"💬 {description or 'Sem descrição disponível.'}"
+        f"<blockquote><b>Status:</b> <i>{status}</i>\n"
+        f"<b>Tipo:</b> <i>{work_type}</i>\n"
+        f"<b>Autor:</b> <i>{author}</i>\n"
+        f"<b>Capitulos:</b> <i>{chapters}</i>\n"
+        f"<b>Tags:</b> <i>{genres_text}</i></blockquote>\n\n"
+        f"<blockquote>{description or 'Sem descricao disponivel.'}</blockquote>"
     )
 
 
@@ -107,6 +118,46 @@ def _save_posted(items: list[str]) -> None:
         json.dumps(items, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
+
+
+def _source_filter_from_args(args: list[str]) -> str:
+    if not args:
+        return "all"
+    raw = str(args[0] or "").strip().lower()
+    aliases = {
+        "all": "all",
+        "todas": "all",
+        "todos": "all",
+        "central": "central",
+        "centralnovel": "central",
+        "centralnovels": "central",
+        "srank": "srank",
+        "s-rank": "srank",
+        "srankmanga": "srank",
+    }
+    return aliases.get(raw, "all")
+
+
+def _is_srank_item(item: dict) -> bool:
+    source = str(item.get("source") or "").strip().lower()
+    title_id = str(item.get("title_id") or "").strip().lower()
+    return source == "srankmanga" or title_id.startswith("srk_")
+
+
+def _filter_catalog_by_source(catalog: list[dict], source_filter: str) -> list[dict]:
+    if source_filter == "srank":
+        return [item for item in catalog if _is_srank_item(item)]
+    if source_filter == "central":
+        return [item for item in catalog if not _is_srank_item(item)]
+    return list(catalog)
+
+
+def _source_filter_label(source_filter: str) -> str:
+    if source_filter == "srank":
+        return "SRankManga"
+    if source_filter == "central":
+        return "Central Novels"
+    return "Central Novels + SRankManga"
 
 
 def _bulk_running(context: ContextTypes.DEFAULT_TYPE) -> bool:
@@ -274,11 +325,12 @@ async def _run_bulk_post_novels(
     context: ContextTypes.DEFAULT_TYPE,
     admin_chat_id: int,
     reply_to_message_id: int | None,
+    source_filter: str = "all",
 ):
     _set_bulk_running(context, True)
     try:
         destination = await ensure_channel_target(context.bot, CANAL_POSTAGEM_NOVELS or admin_chat_id)
-        catalog = await get_series_catalog()
+        catalog = _filter_catalog_by_source(await get_series_catalog(), source_filter)
         posted = _load_posted()
         posted_set = set(posted)
 
@@ -301,6 +353,7 @@ async def _run_bulk_post_novels(
             chat_id=admin_chat_id,
             text=(
                 "🚀 <b>Postagem em lote iniciada.</b>\n\n"
+                f"<b>Fonte:</b> <code>{html.escape(_source_filter_label(source_filter))}</code>\n"
                 f"<b>Total pendente:</b> <code>{len(pending)}</code>\n"
                 f"<b>Intervalo:</b> <code>{int(BULK_POST_DELAY_SECONDS)}s</code>"
             ),
@@ -336,6 +389,7 @@ async def _run_bulk_post_novels(
                 status_message,
                 (
                     "🚀 <b>Postagem em lote em andamento.</b>\n\n"
+                    f"<b>Fonte:</b> <code>{html.escape(_source_filter_label(source_filter))}</code>\n"
                     f"<b>Enviadas:</b> <code>{sent}</code>\n"
                     f"<b>Falhas:</b> <code>{failed}</code>\n"
                     f"<b>Processadas:</b> <code>{index}/{total}</code>\n"
@@ -381,17 +435,20 @@ async def posttodasnovels(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
+    source_filter = _source_filter_from_args(context.args or [])
     task = context.application.create_task(
         _run_bulk_post_novels(
             context=context,
             admin_chat_id=message.chat_id,
             reply_to_message_id=message.message_id,
+            source_filter=source_filter,
         )
     )
     _set_bulk_task(context, task)
 
     await message.reply_text(
         "🚀 <b>Fila de postagem em lote iniciada.</b>\n\n"
+        f"<b>Fonte:</b> <code>{html.escape(_source_filter_label(source_filter))}</code>\n"
         "Vou enviar uma novel, depois um sticker divisor, e seguir nesse ritmo com 30 segundos entre uma postagem e outra.",
         parse_mode="HTML",
     )
