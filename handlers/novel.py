@@ -303,6 +303,9 @@ async def novel_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     query = _normalize_query(" ".join(context.args or []))
+    if not query and context.user_data.pop("_plain_search_message", False):
+        query = _normalize_query(message.text or "")
+
     if not query:
         await message.reply_text(
             "📖 <b>Como buscar uma novel</b>\n\n"
@@ -447,3 +450,18 @@ async def novel_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
         finally:
             _clear_inflight(user.id, query)
+
+
+async def novel_texto_livre(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    message = update.effective_message
+    chat = update.effective_chat
+    user = update.effective_user
+    if not message or not chat or not user or chat.type != "private":
+        return
+    if context.user_data.get("broadcast_state"):
+        return
+    text = _normalize_query(message.text or "")
+    if not text or text.startswith("/"):
+        return
+    context.user_data["_plain_search_message"] = True
+    await novel_command(update, context)

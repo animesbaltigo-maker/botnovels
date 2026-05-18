@@ -23,7 +23,7 @@ from handlers.control_block import control_block_callback_guard, control_block_m
 from services.control_agent import start_control_agent, stop_control_agent
 from handlers.help import ajuda
 from handlers.metricas import metricas, metricas_limpar
-from handlers.novel import novel_command
+from handlers.novel import novel_command, novel_texto_livre
 from handlers.novel_callbacks import callbacks
 from handlers.novel_updates import auto_post_new_novel_caps_job, postnovelcaps
 from handlers.plan import plano
@@ -143,6 +143,10 @@ def main() -> None:
     app.add_handler(CallbackQueryHandler(referral_button, pattern=r"^noop_indicar$"))
     app.add_handler(CallbackQueryHandler(callbacks, pattern=r"^nv\|"))
 
+    app.add_handler(
+        MessageHandler(filters.TEXT & filters.ChatType.PRIVATE & ~filters.COMMAND, novel_texto_livre),
+        group=10,
+    )
     app.add_handler(
         MessageHandler(filters.ALL & ~filters.COMMAND, broadcast_message_router),
         group=99,
